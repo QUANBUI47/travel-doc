@@ -33,9 +33,9 @@
 ### 1.3. Nhóm Mobile App
 | ID | Tính năng | Mô tả | Phase |
 |---|---|---|---|
-| FR-3.1 | **Sync** | Đồng bộ dữ liệu real-time với Website | 5 |
+| FR-3.1 | **Sync** | Đồng bộ dữ liệu real-time với Website | 3 |
 | FR-3.2 | **Notification** | Push notification cho trạng thái đơn hàng | 5 |
-| FR-3.3 | **Offline Cache** | Lưu trữ thông tin tour đã xem ngoại tuyến | 5 |
+| FR-3.3 | **Offline Cache** | Lưu trữ thông tin tour đã xem ngoại tuyến | 6 |
 
 ---
 

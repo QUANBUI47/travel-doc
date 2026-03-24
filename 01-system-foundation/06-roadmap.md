@@ -12,43 +12,51 @@
 - **Sprint:** 1
 - **Deliverables:** Next.js setup, Supabase Auth, Homepage UI (Static), Legal pages.
 
-### Phase 2: Admin Dashboard & Quản lý Hệ thống 🔨
-- **Mục tiêu:** Hệ thống quản trị nội dung và nghiệp vụ.
+### Phase 2: Admin Dashboard 🔨 (Web)
+- **Mục tiêu:** Hệ thống quản trị nội dung và nghiệp vụ phía Web.
 - **Sprint:** 2
 - **Deliverables:** Admin login/security, Homepage settings, SEO settings, CRUD Tour/Hotel/Booking/Customer.
 
-### Phase 3: Khám phá Dịch vụ (Discovery) 📋
-- **Mục tiêu:** Người dùng tìm kiếm và khám phá tour/khách sạn.
+### Phase 3: Khám phá & Mobile Foundation 📋 (Web & Mobile)
+- **Mục tiêu:** Web triển khai tìm kiếm, Mobile khởi động nền tảng.
 - **Sprint:** 3
-- **Deliverables:** Search engine, Filters, Điểm đến theo vùng miền, Tour/Hotel listing.
+- **Deliverables:** 
+    - **Web:** Search engine, Filters, Điểm đến theo vùng miền.
+    - **Mobile:** Setup React Native/Expo, Auth Integration, Shared Tokens implementation.
 
-### Phase 4: Chi tiết Dịch vụ & Booking Flow 📋
-- **Mục tiêu:** Xem chi tiết và đặt chỗ trực tuyến.
+### Phase 4: Chi tiết Dịch vụ & Discovery Mobile 📋 (Web & Mobile)
+- **Mục tiêu:** Web hoàn thiện booking flow, Mobile triển khai tìm kiếm.
 - **Sprint:** 4
-- **Deliverables:** Service detail pages, Booking wizard, Confirmation page, Payment integration.
+- **Deliverables:** 
+    - **Web:** Booking wizard, Confirmation page, Payment integration.
+    - **Mobile:** Search screen, Filters, Tour/Hotel lists (UI bám sát Web Phase 3).
 
-### Phase 5: Trải nghiệm Người dùng & Reviews 📋
-- **Mục tiêu:** Tăng tương tác và giữ chân người dùng.
+### Phase 5: Trải nghiệm & Booking Mobile 📋 (Web & Mobile)
+- **Mục tiêu:** Web hoàn thiện User Dash, Mobile triển khai Booking.
 - **Sprint:** 5
-- **Deliverables:** User Dashboard, Wishlist, Review/Rating system, Email notifications.
+- **Deliverables:** 
+    - **Web:** User Dashboard, Wishlist, Review system.
+    - **Mobile:** Service detail screen, Booking Flow, Payment (UI bám sát Web Phase 4).
 
-### Phase 6: Mobile App & Tối ưu hóa Nâng cao 📋
-- **Mục tiêu:** Mở rộng Đa nền tảng và SEO chuyên sâu.
+### Phase 6: Tối ưu hóa & Mobile Engagement 📋 (Mobile)
+- **Mục tiêu:** Hoàn thiện Mobile và tối ưu hóa toàn hệ thống.
 - **Sprint:** 6
-- **Deliverables:** React Native app (iOS/Android), ISR/WebP optimization, Structured Data (JSON-LD).
+- **Deliverables:** 
+    - **Mobile:** User Dashboard, Notifications, Review system (UI bám sát Web Phase 5).
+    - **General:** Performance tuning, ISR/WebP, SEO Structured Data.
 
 ---
 
 ## 2. Kế hoạch Sprint (Timeline)
 
-| Sprint | Phase | Focus Area | Status |
+| Sprint | Web Track | Mobile Track | Status |
 |---|---|---|---|
-| Sprint 1 | Phase 1 | Foundation & Auth | ✅ Completed |
-| Sprint 2 | Phase 2 | Admin Dashboard (Content & Settings) | 🔨 In Progress |
-| Sprint 3 | Phase 3 | Discovery (Search & Filters) | 📋 Planned |
-| Sprint 4 | Phase 4 | Booking & Payment Flow | 📋 Planned |
-| Sprint 5 | Phase 5 | User Dashboard & Reviews | 📋 Planned |
-| Sprint 6 | Phase 6 | Mobile App & Performance | 📋 Planned |
+| Sprint 1 | Phase 1: Foundation ✅ | - | ✅ Completed |
+| Sprint 2 | Phase 2: Admin Dashboard 🔨 | - | 🔨 In Progress |
+| Sprint 3 | Phase 3: Discovery 📋 | Phase 3: Foundation 📋 | 📋 Planned |
+| Sprint 4 | Phase 4: Booking Flow 📋 | Phase 4: Discovery 📋 | 📋 Planned |
+| Sprint 5 | Phase 5: User Dash & Reviews 📋 | Phase 5: Booking Flow 📋 | 📋 Planned |
+| Sprint 6 | Optimization & Polish 📋 | Phase 6: User Dash & Reviews 📋 | 📋 Planned |
 
 ---
 
