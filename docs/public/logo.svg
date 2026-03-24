@@ -1,0 +1,21 @@
+
+                <!-- Điều chỉnh viewBox từ 400 xuống 300 để khít với nội dung -->
+                <svg width="300" height="110" viewBox="0 0 300 110" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(5, 5)">
+                        <!-- Circle Border (Primary Blue) -->
+                        <circle cx="50" cy="50" r="48" fill="none" stroke="#0068c3" stroke-width="3"></circle>
+                        <!-- Sun (Secondary Yellow) -->
+                        <circle cx="50" cy="65" r="15" fill="#fcc219"></circle>
+                        <!-- Non La (Primary Blue) -->
+                        <path d="M15 60 L50 20 L85 60" fill="none" stroke="#0068c3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <!-- Detail lines -->
+                        <path d="M50 20 L30 60 M50 20 L40 60 M50 20 L60 60 M50 20 L70 60" stroke="#0068c3" stroke-width="1" opacity="0.4"></path>
+                        <path d="M15 60 Q50 68 85 60" fill="none" stroke="#0068c3" stroke-width="3"></path>
+                        <!-- Waves (Primary Blue) -->
+                        <path d="M20 78 Q35 72 50 78 Q65 84 80 78" fill="none" stroke="#0068c3" stroke-width="2"></path>
+                        <path d="M20 88 Q35 82 50 88 Q65 94 80 88" fill="none" stroke="#0068c3" stroke-width="2"></path>
+                    </g>
+                    <!-- Text (Near Black) - Đưa tọa độ x về 115 để gần icon hơn -->
+                    <text x="115" y="80" font-family="sans-serif" font-weight="700" font-size="72" fill="#1A1A1A" style="letter-spacing: -2px;">Vivu</text>
+                </svg>
+            

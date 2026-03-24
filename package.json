@@ -1,0 +1,30 @@
+{
+  "name": "travel-doc",
+  "type": "module",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QUANBUI47/travel-doc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/QUANBUI47/travel-doc/issues"
+  },
+  "homepage": "https://github.com/QUANBUI47/travel-doc#readme",
+  "description": "",
+  "dependencies": {
+    "lucide-react": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "vitepress": "^1.6.4"
+  }
+}
