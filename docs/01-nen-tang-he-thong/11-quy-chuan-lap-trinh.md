@@ -21,6 +21,52 @@
 // 5. Default Export
 ```
 
-## 4. Error Handling
-- Luôn sử dụng Error Boundary cho UI.
-- API Response phải tuân thủ format: `{ success: boolean, data?: any, error?: string, code?: string }`.
+## 4. Đặc tả API Response (Global)
+
+Tất cả các API Endpoints và Server Actions phải trả về dữ liệu theo cấu trúc nhất quán:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Thao tác thành công",
+  "meta": { "total": 100, "page": 1 } // Pagination (nếu có)
+}
+```
+
+Trong trường hợp lỗi:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "AUTH_001",
+    "message": "Phiên làm việc hết hạn",
+    "details": null
+  }
+}
+```
+
+## 5. Quy trình Review & "Definition of Done" (DoD)
+
+Một Task chỉ được coi là hoàn tất khi thỏa mãn:
+1.  **Code Quality**: Không có lỗi linter/compiler (Check `.eslintrc.js`).
+2.  **Logic**: Vượt qua toàn bộ Acceptance Criteria (AC) trong Sprint Backlog.
+3.  **UI/UX**: Đã responsive trên Chrome (Web) và Simulator (Mobile).
+4.  **Security**: Đã áp dụng RLS (Supabase) và Zod Validation.
+
+## 6. Cấu trúc Thư mục Chuẩn (Module-based)
+
+```text
+src/
+  app/ (Next.js routes)
+  components/
+    ui/ (Shared HeroUI/Tailwind components)
+    common/ (Specific functional components)
+  hooks/ (Shared React Hooks)
+  services/ (API / Supabase SDK interactions)
+  types/ (Shared TypeScript interfaces)
+  utils/ (Helper functions)
+```
+
+---
+*Quy chuẩn kỹ thuật Vivu Travel v1.1*

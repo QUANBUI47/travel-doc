@@ -1,25 +1,27 @@
-# [Sprint 2] Yêu cầu Nghiệp vụ: Quản lý Điểm đến (Destination Management)
+# Sprint 2: Quản trị nội dung & Điểm đến (Implementation)
 
-Tài liệu này xác định mục tiêu và chức năng chi tiết cho hệ thống quản lý địa danh du lịch.
+Sprint này thực hiện việc hiện thực hóa các tính năng cốt lõi của CMS để chuẩn bị dữ liệu cho toàn hệ thống.
 
-## 1. Mục tiêu (Objectives)
-- Xây dựng kho dữ liệu các địa điểm du lịch trên toàn Việt Nam.
-- Cung cấp dữ liệu nguồn cho module Quản lý Tour.
-- Hiển thị danh sách điểm đến nổi bật trên Homepage của Client & Mobile.
+## 1. Phạm vi & Liên kết nghiệp vụ
+Các tính năng triển khai trong Sprint này được đặc tả chi tiết tại Product Backlog:
+- [Hành vi Admin: Quản lý Điểm đến & Tour](../../03-kho-tinh-nang/quan-tri-noi-dung/admin-features)
+- [Hành vi Client: Hiển thị Nội dung](../../03-kho-tinh-nang/quan-tri-noi-dung/client-app-display)
 
-## 2. Đặc tả Chức năng (Functional Specs)
+## 2. Acceptance Criteria (AC) - Tiêu chí nghiệm thu
 
-### A. Web Admin (Quản trị)
-- **CRUD Điểm đến**: Thêm, sửa, xóa, xem danh sách.
-- **Mapping Vùng miền**: Phân loại điểm đến theo Miền Bắc, Trung, Nam.
-- **Upload Gallery**: Hỗ trợ upload nhiều ảnh cùng lúc, tự động tối ưu WebP qua Cloudinary.
-- **Tọa độ Map**: Nhập Lat/Long để lấy vị trí chính xác trên bản đồ Mobile.
+### Task 2.1: CRUD Danh mục vùng miền
+- **AC1**: Admin có thể tạo mới vùng miền với Tên và Mã vùng.
+- **AC2**: Không cho phép trùng Mã vùng.
+- **AC3**: Cập nhật Tên vùng miền sẽ phản ánh ngay lập tức trên các Tour liên quan.
 
-### B. Client / Mobile (Người dùng)
-- **Discovery**: Khám phá các điểm đến theo vùng miền.
-- **Featured Sections**: Hiển thị ảnh bìa và mô tả ngắn gọn về địa danh.
+### Task 2.2: Quản lý Điểm đến (POI)
+- **AC1**: Upload ảnh lên Cloudinary thành công và lưu URL vào DB.
+- **AC2**: Form validation: Tên điểm đến > 5 ký tự, Slug tự động tạo và không dấu.
+- **AC3**: Xóa điểm đến phải có confirm modal và check ràng buộc dữ liệu.
 
-## 3. Quy tắc Nghiệp vụ (Business Rules)
-- Không được xóa điểm đến nếu đang có Tour đang Active gắn liền với nó.
-- Tên địa danh không được phép trùng lặp trong cùng một Vùng miền.
-- Ảnh đại diện là bắt buộc đối với mỗi bản ghi Điểm đến.
+### Task 2.3: Tích hợp API v1
+- **AC1**: Toàn bộ dữ liệu được fetch thông qua Server Actions / API Routes đã thiết kế.
+- **AC2**: Handle lỗi 404, 500 với giao diện Toast thông báo cho Admin.
+
+---
+*Ghi chú: Lịch trình chi tiết và Task phân rã nằm trong [Backlog chi tiết](../backlog-chi-tiet).*
