@@ -30,14 +30,15 @@ Bảng dữ liệu: `Destination`
 
 | Tên trường | Kiểu dữ liệu | Bắt buộc | Ràng buộc | Mô tả |
 | :--- | :--- | :---: | :--- | :--- |
-| `id` | String | Yes | Primary Key (cuid) | Định danh duy nhất |
+| `id` | String | Yes | Primary Key (uuid) | Định danh duy nhất |
 | `nameVi` | String | Yes | Max 100 ký tự | Tên tiếng Việt hiển thị |
 | `nameEn` | String | No | Max 100 ký tự | Tên tiếng Anh (mặc định=nameVi) |
 | `slug` | String | Yes | Unique, ASCII-only | URL thân thiện (e.g. vinh-ha-long) |
 | `regionId` | String | Yes | Foreign Key | Liên kết tới bảng `Region` |
-| `imageUrl` | String | Yes | URL Cloudinary | Ảnh đại diện chính |
+| `imageUrl` | String | No | URL Cloudinary | Ảnh đại diện chính |
 | `description`| Text | No | Rich-text | Mô tả chi tiết (HTML) |
-| `isActive` | Boolean | Yes | Default: true | Trạng thái hiển thị |
+| `isFeatured` | Boolean | Yes | Default: false | Trạng thái nổi bật |
+| `sortOrder` | Int | Yes | Default: 0 | Thứ tự sắp xếp hiển thị |
 
 ## 3. Đặc tả Thành phần UI (Component Specs)
 

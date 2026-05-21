@@ -6,6 +6,7 @@ export default {
     logo: '/logo.svg',
     nav: [
       { text: 'Trang chủ', link: '/' },
+      { text: 'Trạng thái Web', link: '/02-quan-ly-sprint/trang-thai-web' },
       { text: 'Lộ trình', link: '/roadmap' }
     ],
     sidebar: [
@@ -56,6 +57,7 @@ export default {
       {
         text: '03. Kế hoạch Triển khai (Sprint Backlog)',
         items: [
+          { text: '⭐ Trạng thái Web (travel-web)', link: '/02-quan-ly-sprint/trang-thai-web' },
           { text: 'Bảng Task Tổng thể', link: '/02-quan-ly-sprint/backlog-chi-tiet' },
           { 
             text: 'Sprint 2: Quản trị nội dung', 

@@ -1,38 +1,70 @@
 # Đặc tả Bảo mật & Xác thực (Security & Auth Specs)
 
-Hệ thống Vivu Travel sử dụng **Supabase Auth** làm nền tảng quản lý danh tính cho cả Web Client, Mobile App và Admin Dashboard.
+Hệ thống Vivu Travel sử dụng **Supabase Auth** làm nền tảng quản lý danh tính cho Web Client và Admin Dashboard. Mobile App: Sprint sau (Phase 2).
+
+> **Triển khai web:** [Trạng thái triển khai Web](../02-quan-ly-sprint/trang-thai-web.md)
 
 ## 1. Cơ chế Xác thực (Authentication)
 
-### Luồng Web (Next.js 15)
-- **Cơ chế**: Server-side Auth bằng cách sử dụng @supabase/ssr.
-- **Middleware**: Toàn bộ các route `/admin/*` và `/dashboard/*` phải được bảo vệ qua middleware.
-- **Logic**:
-    - Nếu không có Session -> Redirect về `/login`.
-    - Nếu có Session nhưng sai Role (e.g. User vào Admin) -> Redirect về `/403`.
+### Luồng Web (Next.js 15) — đã triển khai
 
-### Luồng Mobile App (Expo)
-- **Cơ chế**: JWT lưu tại `SecureStore` của thiết bị.
-- **Refresh Token**: Tự động thực hiện bởi SDK Supabase khi Token hết hạn.
+- **Cơ chế**: Server-side Auth với `@supabase/ssr` + Server Actions (`src/actions/auth.actions.ts`).
+- **Callback OAuth / email**: `GET /auth/callback` — đổi `code` lấy session, `AuthService.ensureUserProfile`.
+- **Hai phiên cookie** (cùng lúc đăng nhập admin + khách nếu cần):
+  - Khách: `AUTH_COOKIES.PUBLIC`
+  - Admin: `AUTH_COOKIES.ADMIN`
+- **Middleware** (`src/middleware.ts`):
+  - URL admin công khai: `/portal/*` (rewrite nội bộ từ `/admin/*`; truy cập trực tiếp `/admin` → 404).
+  - Chưa đăng nhập vào route bảo vệ → redirect `/dang-nhap?returnTo=...`
+  - Admin: `/portal/login`, kiểm tra `Profile.role === ADMIN`
+  - Đã đăng nhập khách vào trang auth (`/dang-nhap`, `/dang-ky`, …) → redirect về trang chủ
+
+### Route auth khách hàng (tiếng Việt)
+
+| Route | Chức năng |
+| :--- | :--- |
+| `/dang-nhap` | Đăng nhập email / Google |
+| `/dang-ky` | Đăng ký |
+| `/dang-ky/xac-nhan-email` | Hướng dẫn xác nhận + gửi lại email |
+| `/quen-mat-khau` | Yêu cầu reset |
+| `/dat-lai-mat-khau` | Đặt mật khẩu mới (sau link email) |
+| `/tai-khoan` | Hồ sơ (đọc; sửa — chưa) |
+| `/don-dat` | Đơn của tôi (placeholder) |
+
+### Đăng nhập Google
+
+- `signInWithOAuth({ provider: "google" })` → redirect Supabase → Google → `/auth/callback`.
+- Cấu hình: Supabase Dashboard (Google provider) + Google Cloud redirect URI `https://<project>.supabase.co/auth/v1/callback`.
+- Branding consent screen: cấu hình trên **Google Cloud OAuth consent screen** (tên app Vivu).
+- **Gộp tài khoản:** bật automatic linking cùng email trên Supabase nếu user vừa đăng ký email vừa đăng nhập Google.
+
+### Email
+
+- Xác nhận đăng ký, reset mật khẩu: **Supabase Auth SMTP** + template HTML trong `travel-web/supabase/templates/`.
+- Không gửi mail đặt chỗ từ Next.js (Sprint 4).
+
+### Luồng Mobile App (Expo) — Planned
+
+- JWT lưu tại `SecureStore`; refresh qua Supabase SDK.
 
 ## 2. Phân quyền (Role-Based Access Control - RBAC)
 
-Hệ thống chia làm 3 Role chính trong bảng `profiles`:
 | Role | Quyền hạn |
 | :--- | :--- |
-| **ADMIN** | Toàn quyền cấu hình hệ thống, quản lý mọi đơn hàng, phê duyệt đánh giá. |
+| **ADMIN** | Toàn quyền cấu hình hệ thống, quản lý nội dung, xem đơn hàng. |
 | **SUPPLIER** | (Sprint sau) Quản lý sản phẩm và đơn hàng của riêng mình. |
-| **USER** | Tìm kiếm, đặt tour, quản lý lịch sử đặt chỗ của cá nhân. |
+| **USER** | Tìm kiếm tour, đặt chỗ (khi Sprint 4), quản lý lịch sử cá nhân. |
 
 ## 3. Chính sách Bảo mật Dữ liệu
 
 ### Row Level Security (RLS) - Supabase
-- **Destination/Tour**: `SELECT` công khai cho mọi người. `INSERT/UPDATE/DELETE` chỉ dành cho role ADMIN.
-- **Booking**: Người dùng chỉ được nhìn thấy đơn hàng của chính mình (Policy: `auth.uid() = user_id`).
-- **Profile**: Chỉ chủ sở hữu mới có quyền chỉnh sửa thông tin cá nhân.
+
+- **Mục tiêu** (cần kiểm tra bật trên Dashboard): Destination/Tour public read; Booking theo `auth.uid()`; Profile chỉ owner sửa.
+- **Thực tế web:** phần lớn mutation qua **Prisma + Server Actions** với `requireAdmin()`, không chỉ dựa RLS.
 
 ### Validation Backend (Prisma)
-- Sử dụng **Zod Schema** để validate dữ liệu đầu vào tại các Server Actions (Web) và API Endpoints (Mobile).
+
+- **Zod Schema** tại Server Actions và API `api/v1/*`.
 
 ---
-*Tài liệu hướng dẫn an toàn thông tin v1.0*
+*Tài liệu bảo mật v1.1 — đồng bộ web 17/05/2026*
