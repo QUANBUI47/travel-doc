@@ -127,7 +127,7 @@ Khi bấm "Chọn ngày + người" → bottom sheet slide up:
 | Adults < 1 | Disable Đặt + show "Cần ít nhất 1 người lớn" |
 | Single supplement enable | Chỉ khi adults = 1 + checkbox |
 | Click Đặt ngay (chưa login) | Redirect `/dang-nhap?next=/tours/[slug]?bookingDraft=...` (preserve draft) |
-| Click Đặt ngay (đã login) | Server Action `createBookingAction` → redirect `/dat-tour/[bookingId]/thanh-toan` (Sprint 4 build trang) |
+| Click Đặt ngay (đã đăng nhập) | Chạy Server Action `createBookingAction` → chuyển hướng tới `/dat-tour/[bookingId]/thanh-toan` (Sprint 6 mới làm trang này) |
 
 ### 1.4 Reference patterns (UX inspiration)
 

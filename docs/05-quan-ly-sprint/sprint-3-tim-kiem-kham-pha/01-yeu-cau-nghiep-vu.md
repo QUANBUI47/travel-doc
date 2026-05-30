@@ -3,9 +3,12 @@
 Sprint này tập trung vào việc hiện thực hóa bộ công cụ tìm kiếm và lọc dữ liệu thông minh để tăng trải nghiệm người dùng.
 
 ## 1. Phạm vi & Liên kết nghiệp vụ
+
+> Tài liệu yêu cầu sản phẩm gốc đã chuyển vào kho lưu trữ (cấu trúc mới xem [Ma trận tính năng](../../01-nghiep-vu/04-ma-tran-tinh-nang.md)).
+
 Các tính năng triển khai trong Sprint này được đặc tả chi tiết tại Product Backlog:
-- [Hành vi Admin: Cấu hình Search & Tag](../../03-kho-tinh-nang/tim-kiem-kham-pha/admin-configs)
-- [Hành vi Client: Công cụ Tìm kiếm](../../03-kho-tinh-nang/tim-kiem-kham-pha/client-search-tools)
+- [Hành vi Admin: Cấu hình Search & Tag](../../99-tham-khao/archive/03-kho-tinh-nang/tim-kiem-kham-pha/admin-configs) (đã lưu trữ)
+- [Hành vi Client: Công cụ Tìm kiếm](../../99-tham-khao/archive/03-kho-tinh-nang/tim-kiem-kham-pha/client-search-tools) (đã lưu trữ)
 
 ## 2. Acceptance Criteria (AC) - Tiêu chí nghiệm thu
 

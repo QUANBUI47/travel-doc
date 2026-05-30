@@ -1,11 +1,16 @@
-# Sprint 4: Thanh toán & Đặt chỗ (Implementation)
+# Sprint 6: Đặt chỗ & Thanh toán (Triển khai)
 
-Sprint này tập trung vào việc hiện thực hóa luồng Checkout an toàn và tích hợp các cổng thanh toán (Payment Gateways).
+> ⚠️ Tài liệu này được viết khi sprint còn là "Sprint 4". Đã đổi số thành Sprint 6 (xem `../trang-thai-web.md`). Một số chi tiết về cấu trúc dữ liệu sẽ được rà soát lại ở task **S4-07** (Sprint 4 Đổi nền — đồng bộ tài liệu) — chưa nên dùng làm nguồn sự thật cho code mới cho tới khi rà soát xong.
+
+Sprint này tập trung vào việc làm luồng thanh toán an toàn và tích hợp các cổng thanh toán (VNPay, MoMo).
 
 ## 1. Phạm vi & Liên kết nghiệp vụ
+
+> Tài liệu yêu cầu sản phẩm gốc đã chuyển vào kho lưu trữ (cấu trúc mới xem [Ma trận tính năng](../../01-nghiep-vu/04-ma-tran-tinh-nang.md)).
+
 Các tính năng triển khai trong Sprint này được đặc tả chi tiết tại Product Backlog:
-- [Hành vi Admin: Quản lý Đơn hàng (OMS)](../../03-kho-tinh-nang/dat-cho-thanh-toan/admin-oms)
-- [Hành vi Client: Luồng Checkout](../../03-kho-tinh-nang/dat-cho-thanh-toan/client-checkout)
+- [Hành vi Admin: Quản lý Đơn hàng (OMS)](../../99-tham-khao/archive/03-kho-tinh-nang/dat-cho-thanh-toan/admin-oms) (đã lưu trữ)
+- [Hành vi Client: Luồng Checkout](../../99-tham-khao/archive/03-kho-tinh-nang/dat-cho-thanh-toan/client-checkout) (đã lưu trữ)
 
 ## 2. Acceptance Criteria (AC) - Tiêu chí nghiệm thu
 

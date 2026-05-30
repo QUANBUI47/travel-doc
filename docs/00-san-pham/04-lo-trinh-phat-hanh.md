@@ -84,84 +84,104 @@ Foundation  CMS         Discovery    Booking      Member       Optimize
 
 → Chi tiết: `../05-quan-ly-sprint/sprint-2-quan-tri-diem-den/`
 
-### Tầng 2 — Revenue path (Sprint 3-4, Doing/Upcoming)
+### Tầng 2 — Đổi nền schema + Tạo doanh thu (Sprint 3 → 6)
 
-**Sprint 3 — Khám phá & Tìm kiếm** 🔶 In Progress (~40%)
-- Tour listing + filter (destination, giá, thời gian, mood)
-- Autocomplete + map cluster (chưa)
-- SSR/ISR + cache
+**Sprint 3 — Khám phá & Tìm kiếm** 🔶 Tạm dừng (~40%)
+- Trang danh sách tour + lọc cơ bản đã có
+- Gợi ý từ khoá, lọc theo đánh giá, bản đồ gom điểm → đẩy sang **Sprint 5** (sau khi đổi nền schema)
+- Đã hỗ trợ trang chạy server (SSR/ISR) + bộ nhớ đệm
 
 → Chi tiết: `../05-quan-ly-sprint/sprint-3-tim-kiem-kham-pha/`
 
-**Sprint 4 — Đặt chỗ & Thanh toán** ⏳ Upcoming (10% stub)
-- **Sprint quan trọng nhất Phase 1** — sinh revenue
-- Booking flow: cart → form → payment → confirm
-- Pessimistic lock `TourDeparture.bookedCount`
-- VNPay + MoMo integration
-- `InquiryRequest` lead capture (Private Tour)
-- Cron auto-cancel booking PENDING quá 15 phút
-- Email transactional (Resend)
+**Sprint 4 — Đổi nền Schema (Schema Pivot)** 🔥 ĐANG LÀM (2 tuần)
+- Sprint chỉnh lại toàn bộ cấu trúc dữ liệu cho khớp các quyết định kiến trúc ADR-001..006 (Khách sạn = nội dung tham chiếu, Bảng giá theo đầu khách, ID kiểu UUID, Form yêu cầu tour riêng)
+- Chạy migration `add_pricing_options_and_allotment` (10 phần)
+- Chỉnh lại CRUD Tour + Service đặt chỗ + Widget đặt nhiều khách
+- Lý do tồn tại: nếu đi thẳng Sprint 6 (Đặt chỗ) với cấu trúc dữ liệu cũ → chắc chắn phải làm lại
 
-**Pre-requisites cứng** (phải xong TRƯỚC khi start):
-1. Migration `add_pricing_options_and_allotment` (10 PART) chạy thành công
-2. Schema `@db.Uuid` toàn bộ ID/FK (ADR-003)
-3. `Booking.userId` + `Review.userId` chuyển `onDelete: Restrict`
-4. Doc: `03-co-so-du-lieu/03-toan-ven-concurrency.md` đã chốt
+→ Chi tiết: `../05-quan-ly-sprint/sprint-4-schema-pivot/`
 
-→ Chi tiết: `../05-quan-ly-sprint/sprint-4-dat-cho-thanh-toan/`
+**Sprint 5 — Đóng nốt Tìm kiếm** ⏳ Sắp tới (1.5 tuần)
+- Làm tiếp 60% Sprint 3 còn dở
+- Gợi ý từ khoá, lọc theo đánh giá / loại tour, bản đồ gom điểm
 
-### Tầng 3 — Retention & SEO (Sprint 5-6, Upcoming)
+→ Chi tiết: `../05-quan-ly-sprint/sprint-5-dong-tim-kiem/`
 
-**Sprint 5 — Thành viên & Đánh giá** ⏳
-- User profile + booking history
-- Review verified (chỉ booking `COMPLETED`)
-- Profile portal `/account/*`
+**Sprint 6 — Đặt chỗ & Thanh toán** ⏳ Sắp tới (3 tuần)
+- **Sprint quan trọng nhất Phase 1** — sinh doanh thu
+- Luồng đặt: chọn ngày → form khách → thanh toán → xác nhận (đã chỉnh xong cấu trúc ở Sprint 4)
+- Khoá hàng đợi `TourDeparture.bookedCount` để tránh đặt trùng (đã có sẵn từ Sprint 4)
+- Tích hợp VNPay + MoMo
+- Form yêu cầu tour riêng `InquiryRequest` (đã làm ở Sprint 4)
+- Tự động huỷ đặt chỗ chưa thanh toán quá 15 phút (job định kỳ)
+- Email gửi xác nhận (Resend)
 
-→ Chi tiết: `../05-quan-ly-sprint/sprint-5-thanh-vien-danh-gia/`
+**Điều kiện cần trước** (Sprint 4 đã đảm bảo):
+1. ✅ Migration `add_pricing_options_and_allotment` (Sprint 4 task S4-01)
+2. ✅ Toàn bộ ID/khoá ngoại đã chuyển sang UUID (ADR-003) — Sprint 4 task S4-01
+3. ✅ Khoá ngoại `Booking.userId` + `Review.userId` đổi sang `onDelete: Restrict` để không xoá nhầm (Sprint 4)
+4. ✅ Bảng giá theo đầu khách đã sống (Sprint 4 task S4-03/04/05)
+5. ✅ Tài liệu `03-co-so-du-lieu/03-toan-ven-concurrency.md` đã chốt
 
-**Sprint 6 — Quy hoạch & Tối ưu** ⏳
-- SEO toàn diện (Lighthouse >90, Core Web Vitals)
-- Sitemap + robots.txt + structured data đầy đủ
-- Admin Dashboard L0 (booking hôm nay, doanh thu tuần, top tour, export CSV)
-- Performance optimize + cache tuning
-- Pre-launch checklist
+→ Chi tiết: `../05-quan-ly-sprint/sprint-6-dat-cho-thanh-toan/`
 
-→ Chi tiết: `../05-quan-ly-sprint/sprint-6-quy-hoach-toi-uu/`
+### Tầng 3 — Giữ chân khách & Ra mắt (Sprint 7-8)
+
+**Sprint 7 — Đánh giá khách** ⏳ (1.5 tuần)
+- Đánh giá đã xác minh (chỉ user đã đặt tour `COMPLETED` mới đánh giá được)
+- Admin duyệt / từ chối đánh giá
+- Hiển thị đánh giá trên trang chi tiết tour + đánh dấu Schema.org `aggregateRating` để Google hiểu
+- Trang cá nhân `/tai-khoan/*` + đơn của tôi `/don-dat/*`
+
+> ~~Tích điểm thành viên~~ — hoãn sang Phase 2.
+
+→ Chi tiết: `../05-quan-ly-sprint/sprint-7-danh-gia/`
+
+**Sprint 8 — Báo cáo + SEO + Ra mắt** ⏳ (2 tuần)
+- Bảng tổng quan vận hành L0 (đơn hôm nay, doanh thu tuần, tour bán chạy, xuất CSV — xem ADR-007)
+- Hoàn thiện SEO (Lighthouse >90, Core Web Vitals, ảnh chia sẻ mạng xã hội, Schema.org đầy đủ)
+- Tối ưu hiệu năng + tinh chỉnh bộ nhớ đệm
+- Danh sách kiểm tra trước khi ra mắt (tên miền, SSL, theo dõi, sao lưu, thông báo fanpage)
+
+→ Chi tiết: `../05-quan-ly-sprint/sprint-8-quy-hoach-toi-uu/`
 
 ---
 
-## Sequencing — vì sao theo thứ tự này
+## Vì sao theo thứ tự này
 
 | Quyết định | Lý do |
 | --- | --- |
-| **Booking-first** (Sprint 4 trước Sprint 5) | Sinh revenue. Review schema có sẵn nhưng UI có thể defer 1 sprint mà không chặn launch |
-| **CMS trước Discovery** | Admin cần tạo tour để có data hiển thị; Sprint 3 dùng data Sprint 2 |
-| **SEO Sprint 6, không phải Sprint 1** | Foundation SEO (metadata, sitemap) có từ Sprint 1; optimize Lighthouse Sprint 6 khi data đủ |
-| **Optimize cuối cùng** | Profiling cần production-like data → chạy trên data thật |
-| **Inquiry chung Sprint 4** | Cùng touch booking + email + admin notification — gộp tránh duplicate |
+| **Sprint 4 Đổi nền trước Sprint 6 Đặt chỗ** | Cấu trúc dữ liệu cũ lệch ADR-001..006 ở 7 chỗ. Đi thẳng Sprint 6 với cấu trúc cũ chắc chắn phải làm lại. Đổi nền 2 tuần để cứu được 4-6 tuần làm lại |
+| **Sprint 5 Đóng tìm kiếm sau Đổi nền** | Sprint 3 đã tạm dừng ở 40%. Sprint 5 dùng cấu trúc dữ liệu mới (bảng giá theo đầu khách, loại tour kiểu enum) cho lọc đánh giá + gợi ý |
+| **Đặt chỗ trước Đánh giá** (Sprint 6 trước Sprint 7) | Sinh doanh thu. Đánh giá tuy có cấu trúc dữ liệu sẵn nhưng UI có thể hoãn 1 sprint mà không chặn ra mắt |
+| **CMS trước Khám phá** | Admin cần tạo tour để có dữ liệu hiển thị; Sprint 3 dùng dữ liệu của Sprint 2 |
+| **SEO ở Sprint 8, không phải Sprint 1** | Nền tảng SEO (thẻ meta, sitemap) đã có từ Sprint 1; tối ưu Lighthouse để Sprint 8 khi đã có đủ dữ liệu |
+| **Tối ưu cuối cùng** | Đo hiệu năng cần dữ liệu giống thật → chạy trên dữ liệu thật |
+| **Form yêu cầu tour riêng gộp vào Sprint 4 Đổi nền** | Cùng đụng tới đặt chỗ + email + thông báo admin — gộp tránh trùng việc |
+| **Hoãn Tích điểm thành viên** | Khách Việt giai đoạn đầu ít quan tâm thẻ thành viên du lịch. Làm sau khi có 100-200 khách thật |
 
 ---
 
-## Milestones & Deliverables
+## Mốc & Sản phẩm bàn giao
 
-| Tháng | Milestone | Output |
+| Tháng | Mốc | Sản phẩm |
 | --- | --- | --- |
-| **M1** (now) | Migration `add_pricing_options_and_allotment` done | Schema UUID + 10 PART applied |
-| **M2** | Sprint 3 Discovery close | Tour listing + filter prod-ready |
-| **M3** | Sprint 4 Booking close | Booking flow end-to-end + 3 user beta |
-| **M4** | Sprint 5 close | Review verified live, profile portal |
-| **M5** | Sprint 6 close | Lighthouse >90, Dashboard L0 |
-| **M6** | **Private beta launch** | 20 tour + 3-5 user thật + Founder go-live |
+| **M1** (now) | Sprint 4 Đổi nền xong | Cấu trúc dữ liệu UUID + 10 phần migration đã chạy + Bảng giá theo đầu khách đã sống + Form yêu cầu tour riêng đã sống |
+| **M2** | Sprint 5 đóng | Gợi ý từ khoá + lọc theo đánh giá + bản đồ gom điểm |
+| **M3** | Sprint 6 đóng | Luồng đặt tour đầu cuối + 3 user thử + VNPay + email |
+| **M4** | Sprint 7 đóng | Đánh giá đã xác minh đi vào hoạt động, trang cá nhân |
+| **M5** | Sprint 8 đóng | Lighthouse >90, Bảng tổng quan vận hành L0, danh sách kiểm tra trước ra mắt |
+| **M6** | **Ra mắt nội bộ (private beta)** | 20 tour + 3-5 user thật + Founder go-live |
 
 ---
 
-## Risk to schedule
+## Rủi ro về tiến độ
 
-| Risk | Tác động | Mitigation |
+| Rủi ro | Tác động | Cách phòng ngừa |
 | --- | --- | --- |
-| Migration `add_pricing_options_and_allotment` fail rollback | Block Sprint 4 → mất 1-2 tuần | Test trên DB staging copy production trước, script audit pre-flight |
-| VNPay/MoMo sandbox không stable | Block Sprint 4 acceptance | Sandbox sớm Sprint 3 cuối, mock fallback |
-| SEO traffic không lên đúng kỳ vọng | Phase 1.5 lùi | Dồn Ads budget bù 6-12 tháng đầu |
+| Migration `add_pricing_options_and_allotment` hỏng phải khôi phục | Chặn Sprint 6 → mất 1-2 tuần | Test trên Supabase staging với bản dump prod trước, chạy script kiểm tra trước khi áp dụng, có sao lưu PITR |
+| VNPay/MoMo sandbox không ổn định | Chặn nghiệm thu Sprint 6 | Dùng sandbox sớm cuối Sprint 5, có phương án giả lập dự phòng |
+| Lượng truy cập SEO không lên đúng kỳ vọng | Phase 1.5 lùi | Dồn ngân sách quảng cáo bù 6-12 tháng đầu |
 | Hotel partner không đủ 20 tour | Phase 1 launch trì hoãn | Founder track contract weekly, có buffer 30% |
 | Team scale: 2 dev không kịp | Sprint trễ 2-3 tuần | Đã chấp nhận trade-off scope, không scope creep |
 

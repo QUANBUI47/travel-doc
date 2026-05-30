@@ -2,7 +2,7 @@
 
 | Phiên bản | Ngày | Sprint | Nội dung thay đổi | Người thực hiện |
 | :--- | :--- | :--- | :--- | :--- |
-| **v1.0** | 26/03/2026 | [Sprint 2](../../02-quan-ly-sprint/sprint-2-quan-tri-diem-den/01-yeu-cau-nghiep-vu) | Khởi tạo tài liệu thiết kế chi tiết | PO |
+| **v1.0** | 26/03/2026 | [Sprint 2](./01-yeu-cau-nghiep-vu) | Khởi tạo tài liệu thiết kế chi tiết | PO |
 
 ---
 

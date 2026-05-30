@@ -1,8 +1,8 @@
 # Sprint 4 — Schema Pivot
 
-> **Lý do tồn tại**: Sau khi finalize bộ doc v2.0 (D1-D5 hoàn thành 2026-05-27), audit code `travel-web` phát hiện schema hiện tại đang lệch ADR-001..006 ở 7 chỗ quan trọng. Nếu bỏ qua đi thẳng Sprint 4 Booking → code sẽ rework chắc chắn.
+> **Lý do tồn tại**: Sau khi chốt bộ tài liệu v2.0 (D1-D5 hoàn thành 2026-05-27), rà soát lại code `travel-web` thì phát hiện cấu trúc dữ liệu hiện tại đang lệch ADR-001..006 ở 7 chỗ quan trọng. Nếu bỏ qua, đi thẳng Sprint 6 Đặt chỗ → chắc chắn phải làm lại.
 >
-> Sprint 4 = "pivot sprint" để align schema + code core với ADR mới **trước khi** đi tiếp Sprint 4.
+> Sprint 4 = "sprint đổi nền" để chỉnh cấu trúc dữ liệu + code lõi cho khớp các ADR mới **trước khi** đi tiếp Sprint 6 Đặt chỗ.
 
 **Sprint code**: S4
 **Loại sprint**: Pivot / Refactor (không add feature mới ngoài `InquiryRequest`)
@@ -24,7 +24,7 @@
 
 1. **Schema alignment**: DB + Prisma schema khớp 100% với ADR-001..006.
 2. **Pricing Pattern C live**: tour có 4 giá per-pax + service tier upsell.
-3. **Booking flow ready cho Sprint 4**: service + widget hoạt động được với multi-pax.
+3. **Luồng đặt tour sẵn sàng cho Sprint 6**: service + widget chạy được với nhiều khách.
 4. **InquiryRequest live**: lead capture form public + admin manage.
 5. **0 reference đến field cũ**: `bookingType`, `HotelBooking`, `priceFrom`, `durationText`, `tourType` (string).
 6. **Doc + reality đồng bộ**: `trang-thai-web.md` cập nhật phản ánh đúng code.
@@ -42,7 +42,7 @@
 | 5 | Tour CRUD admin nhập 4 giá + ≥0 TourOption | E2E test `admin/tours/[id]` flow |
 | 6 | Booking flow E2E: chọn departure → multi-pax → calc đúng → tạo booking → lock departure | `tests/e2e/booking-pattern-c.spec.ts` |
 | 7 | InquiryRequest public form + admin list nhận lead | E2E test `/lien-he-doan-rieng` |
-| 8 | `trang-thai-web.md` Sprint 4 = Done, Sprint 4 unblocked | Doc updated, changelog log entry |
+| 8 | `trang-thai-web.md` ghi Sprint 4 = Done, Sprint 6 hết bị chặn | Doc cập nhật, có entry trong changelog |
 | 9 | 0 lint error, 0 type error, build production pass | `pnpm build` exit 0 |
 | 10 | Staging tested ≥48h trước khi production | Staging URL + log → 0 error 500 |
 
@@ -95,21 +95,21 @@ D5  S4-03 phần 2 (UI admin
 | **R4** InquiryRequest spam | 🟡 Trung | Rate limit 3 inquiry/giờ/IP, captcha hCaptcha, validate phone VN format |
 | **R5** Refactor JSON-LD Schema.org sai → SEO impact | 🟡 Trung | Test với Google Rich Results test tool sau khi deploy staging |
 | **R6** i18n labels mâu thuẫn (mix old + new keys) | 🟢 Thấp | Drop old key cùng commit với refactor, không để 2 phase |
-| **R7** Sprint 4 dev đụng vào schema cũ vì cache code | 🟢 Thấp | Sau S4-01 force `git pull` + `pnpm install` toàn team |
+| **R7** Dev đụng cấu trúc dữ liệu cũ vì client Prisma chưa cập nhật | 🟢 Thấp | Trước mỗi story, chạy `git pull` + `pnpm install` để client Prisma luôn mới |
 
 ---
 
-## Out of scope (deferred)
+## Ngoài phạm vi (hoãn sang sprint khác)
 
-Mục đích Sprint 4 là pivot foundation, KHÔNG nên scope creep. Các mục sau **deferred** sang sprint khác:
+Mục đích Sprint 4 là chỉnh nền cấu trúc dữ liệu, KHÔNG nên làm thêm việc khác. Các mục sau **để sau**:
 
-- ❌ Hoàn thành nốt Sprint 3 (autocomplete + filter rating + cluster map) → đẩy sang Sprint 3.6 sau pivot
-- ❌ Booking VNPay/MoMo integration → Sprint 4 (Booking)
-- ❌ Email confirm booking → Sprint 4
-- ❌ Cron job auto-cancel quá deadline → Sprint 4
-- ❌ Loyalty program → Sprint 5
-- ❌ Review system → Sprint 5
-- ❌ Admin dashboard L0 → Sprint 6
+- ❌ Hoàn thành nốt Sprint 3 (gợi ý từ khoá + lọc đánh giá + bản đồ gom điểm) → đẩy sang Sprint 5
+- ❌ Tích hợp VNPay/MoMo → Sprint 6 (Đặt chỗ)
+- ❌ Email xác nhận đặt chỗ → Sprint 6
+- ❌ Job tự động huỷ đặt chỗ chưa thanh toán quá hạn → Sprint 6
+- ❌ Tích điểm thành viên → hoãn Phase 2 (đã loại khỏi MVP)
+- ❌ Hệ thống đánh giá → Sprint 7
+- ❌ Bảng tổng quan vận hành L0 → Sprint 8
 
 ---
 

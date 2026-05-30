@@ -3,9 +3,12 @@
 Sprint này thực hiện việc hiện thực hóa các tính năng cốt lõi của CMS để chuẩn bị dữ liệu cho toàn hệ thống.
 
 ## 1. Phạm vi & Liên kết nghiệp vụ
+
+> Tài liệu yêu cầu sản phẩm gốc đã chuyển vào kho lưu trữ (cấu trúc mới xem [Ma trận tính năng](../../01-nghiep-vu/04-ma-tran-tinh-nang.md)).
+
 Các tính năng triển khai trong Sprint này được đặc tả chi tiết tại Product Backlog:
-- [Hành vi Admin: Quản lý Điểm đến & Tour](../../03-kho-tinh-nang/quan-tri-noi-dung/admin-features)
-- [Hành vi Client: Hiển thị Nội dung](../../03-kho-tinh-nang/quan-tri-noi-dung/client-app-display)
+- [Hành vi Admin: Quản lý Điểm đến & Tour](../../99-tham-khao/archive/03-kho-tinh-nang/quan-tri-noi-dung/admin-features) (đã lưu trữ)
+- [Hành vi Client: Hiển thị Nội dung](../../99-tham-khao/archive/03-kho-tinh-nang/quan-tri-noi-dung/client-app-display) (đã lưu trữ)
 
 ## 2. Acceptance Criteria (AC) - Tiêu chí nghiệm thu
 

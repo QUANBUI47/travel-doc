@@ -211,7 +211,7 @@ ADD CONSTRAINT tours_pricing_positive_check
 CHECK (price_adult > 0 AND price_child >= 0 AND price_infant >= 0);
 ```
 
-> **Note**: Sau backfill, admin nên rà soát lại các tour và điều chỉnh `priceChild` thực tế nếu khác 70% (vd các tour đặc biệt). Đây là task cleanup sau Sprint 4, không block migration.
+> **Lưu ý**: Sau khi đồng bộ dữ liệu cũ, admin nên rà soát các tour và chỉnh lại `priceChild` thực tế nếu khác mức 70% (ví dụ các tour đặc biệt). Đây là việc dọn dẹp sau khi đổi nền, không chặn migration.
 
 ### 0.5.2 TourBooking backfill (sau PART 3.5)
 
@@ -253,10 +253,10 @@ WHERE adults IS NULL;
 ALTER TABLE tour_bookings ALTER COLUMN adults SET NOT NULL;
 ALTER TABLE tour_bookings ALTER COLUMN price_breakdown SET NOT NULL;
 
--- KHÔNG drop unit_price + participants ở sprint này (defer Sprint 4 cuối khi confidence cao)
+-- KHÔNG xoá unit_price + participants ở sprint này (để cuối Sprint 6 mới xoá khi đã chắc chắn ổn)
 ```
 
-> **Decision**: Cột `unit_price` + `participants` được giữ lại làm "shadow" trong Sprint 4. Sau Sprint 4 confirm flow ổn định ≥2 tuần thì mới drop. Đây là pattern **expand-contract** migration để giảm risk.
+> **Quyết định**: Cột `unit_price` + `participants` được giữ lại làm "cột song song" trong Sprint 4. Sau khi Sprint 6 chạy ổn định ≥2 tuần thì mới xoá. Đây là cách giảm rủi ro: thêm cột mới chạy song song một thời gian, mới xoá cột cũ.
 
 ### 0.5.3 Booking PENDING active
 
