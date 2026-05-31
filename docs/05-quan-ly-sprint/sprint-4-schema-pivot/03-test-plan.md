@@ -19,41 +19,37 @@
 
 ---
 
-## Test infrastructure setup
+## Setup môi trường test
 
-> **Decision**: Test DB chạy trên **Docker Postgres local** (không dùng Supabase test schema). Lý do:
-> - Không tốn tiền Supabase project riêng
-> - Reset state nhanh (truncate qua `prisma migrate reset --force`)
-> - Chạy được CI/CD GitHub Actions
-> - Latency thấp (local socket)
+> **Quyết định**: dùng **Postgres local** (đã cài sẵn trên máy) thay vì Docker. Lý do:
+> - Đã có Postgres local rồi, không cần thêm Docker
+> - Tạo 1 database riêng `vivu_test` cho test, tách khỏi DB development
+> - Reset nhanh qua `prisma migrate reset --force`
+> - Khi setup CI/CD GitHub Actions sau này → dùng service Postgres của Actions
 
-### Setup file `docker-compose.test.yml`
+### Tạo database test
 
-```yaml
-services:
-  postgres-test:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: test
-      POSTGRES_DB: vivu_test
-    ports:
-      - "5433:5432"
-    tmpfs:
-      - /var/lib/postgresql/data  # in-memory cho speed
+Chạy 1 lần để tạo DB test:
+
+```bash
+psql -h localhost -U postgres -c "CREATE DATABASE vivu_test;"
 ```
 
 ### Setup `.env.test`
 
 ```bash
-DATABASE_URL="postgresql://test:test@localhost:5433/vivu_test?schema=public"
-DIRECT_URL="postgresql://test:test@localhost:5433/vivu_test"
+# File .env.test (đã có trong .gitignore)
+DATABASE_URL="postgresql://postgres:[YOUR_PASSWORD]@localhost:5432/vivu_test?schema=public"
+DIRECT_URL="postgresql://postgres:[YOUR_PASSWORD]@localhost:5432/vivu_test"
 NODE_ENV="test"
 ```
 
-### Vitest config — `vitest.config.ts`
+Thay `[YOUR_PASSWORD]` bằng mật khẩu postgres local của bạn.
+
+### Vitest config — cập nhật `vitest.config.ts`
 
 ```typescript
+import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 import { config } from 'dotenv'
 
@@ -62,10 +58,21 @@ config({ path: '.env.test' })
 export default defineConfig({
   test: {
     environment: 'node',
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     globalSetup: ['./tests/global-setup.ts'],
     setupFiles: ['./tests/setup.ts'],
     pool: 'forks',
     poolOptions: { forks: { singleFork: true } },
+    coverage: {
+      provider: 'v8',
+      include: ['src/lib/**/*.ts', 'src/services/**/*.ts'],
+      exclude: ['**/*.test.ts', '**/index.ts'],
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
 })
 ```
@@ -76,16 +83,16 @@ export default defineConfig({
 import { execSync } from 'node:child_process'
 
 export async function setup() {
-  execSync('docker-compose -f docker-compose.test.yml up -d postgres-test', { stdio: 'inherit' })
-  execSync('pnpm prisma migrate deploy', {
+  // Reset + chạy migration trên DB test mỗi lần bắt đầu test suite
+  execSync('pnpm prisma migrate reset --force --skip-seed', {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL },
   })
-  console.log('[test] DB ready')
+  console.log('[test] DB sẵn sàng')
 }
 
 export async function teardown() {
-  execSync('docker-compose -f docker-compose.test.yml down', { stdio: 'inherit' })
+  // Không cần làm gì — DB local vẫn còn để debug nếu cần
 }
 ```
 

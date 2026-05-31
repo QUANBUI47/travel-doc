@@ -1,50 +1,42 @@
-# Sprint 4 — Migration Runbook
+# Sprint 4 — Hướng dẫn chạy migration (Path A — chưa có khách thật)
 
-> **Mục đích**: hướng dẫn thực thi step-by-step cho story **S4-01 Apply migration**. Đọc file này trước khi chạm DB.
+> **Bối cảnh chọn Path A**: production hiện chưa có booking thật của khách. Vì vậy đi đường ngắn — reset DB + chạy migration mới + seed lại dữ liệu mẫu. Không cần Pro plan + PITR + staging riêng + script đồng bộ dữ liệu cũ.
 >
-> **Đối tượng**: Tech Lead + dev có quyền access Supabase.
-> **Khi đọc**: trước Day 1 của sprint, ôn lại Day 4 (apply prod).
+> **Khi nào dùng phiên bản đầy đủ?** Sau khi Sprint 6 (Đặt chỗ) đóng và ra mắt nội bộ → có booking khách thật → đọc `02-runbook-luc-da-co-khach.md` cho lần migration tiếp theo.
 
 ---
 
-## Phase 0 — Pre-flight (Day -2 đến Day 0)
+## Tổng quan thời gian
 
-### 0.1 Verify Supabase Pro plan + PITR enabled
+| Giai đoạn | Thời gian | Khi nào |
+| --- | --- | --- |
+| Giai đoạn 0 — Chuẩn bị | ~20 phút | Trước khi chạy |
+| Giai đoạn 1 — Sửa schema + chạy migration local | ~2 tiếng | Day 1 sáng |
+| Giai đoạn 2 — Sửa lại file seed | ~1 tiếng | Day 1 chiều |
+| Giai đoạn 3 — Chạy migration trên Supabase production | ~15 phút | Day 1 cuối ngày |
+| **Tổng** | **~3-4 tiếng** | |
 
-PITR (Point-in-time recovery) chỉ available với Pro plan trở lên. Free tier chỉ có daily backup, **không đủ** cho rollback granular.
+---
 
-**Steps:**
+## Giai đoạn 0 — Chuẩn bị (~20 phút)
 
-1. Đăng nhập Supabase dashboard → Project prod
-2. Settings → Billing → verify "Pro plan" hoặc upgrade
-3. Database → Backups → verify "Point-in-time recovery: Enabled" với window ≥7 ngày
-4. Nếu chưa enable → click Enable, đợi ~15 phút
-5. Test PITR: tạo throwaway project + restore từ PITR snapshot mới nhất → confirm restore work
-
-**Cost note**: Pro $25/tháng, PITR 7 ngày miễn phí Pro plan.
-
-### 0.2 Tạo Supabase staging project
-
-1. Supabase dashboard → New Project
-2. Tên: `vivu-staging`, region cùng region với prod (latency tương tự)
-3. Plan: Pro (để có Branching nếu cần sau này, hoặc Free nếu cost-conscious)
-4. Wait ~2 phút deploy xong
-5. Settings → Database → copy `Connection string (URI)` cho `.env.staging`:
+### 0.1 Tạo branch git mới
 
 ```bash
-# .env.staging (KHÔNG commit)
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres"
+cd travel-web
+git checkout main
+git pull
+git checkout -b sprint-4/schema-pivot
 ```
 
-### 0.3 Dump production + import staging
+### 0.2 Backup nhanh dữ liệu hiện tại (an toàn ~5 phút)
 
-**Step A — Dump prod** (chạy ở máy local có quyền):
+Dù chưa có khách thật, vẫn nên dump 1 bản về máy phòng khi cần xem lại:
 
 ```bash
-# Trong terminal prod-access
-PGPASSWORD="$PROD_DB_PASSWORD" pg_dump \
-  --host=db.[PROD_PROJECT].supabase.co \
+# Lấy DATABASE_URL từ Supabase dashboard → Settings → Database → Connection string
+PGPASSWORD="$SUPABASE_DB_PASSWORD" pg_dump \
+  --host=db.[PROJECT].supabase.co \
   --port=5432 \
   --username=postgres \
   --dbname=postgres \
@@ -52,472 +44,347 @@ PGPASSWORD="$PROD_DB_PASSWORD" pg_dump \
   --no-owner \
   --no-acl \
   --format=custom \
-  --file=prod_dump_$(date +%Y%m%d_%H%M%S).dump
-
-# File ~5-50 MB tuỳ data
+  --file=backups/before_sprint4_$(date +%Y%m%d).dump
 ```
 
-**Step B — Restore vào staging:**
+File backup giữ trong `backups/` (đã có trong `.gitignore`). Nếu lỡ tay xoá dữ liệu nội bộ quan trọng, vẫn có thể `pg_restore`.
+
+### 0.3 Verify Postgres local đang chạy
 
 ```bash
-PGPASSWORD="$STAGING_DB_PASSWORD" pg_restore \
-  --host=db.[STAGING_PROJECT].supabase.co \
-  --port=5432 \
-  --username=postgres \
-  --dbname=postgres \
-  --no-owner \
-  --no-acl \
-  --clean --if-exists \
-  prod_dump_xxx.dump
-
-# Time: ~2-5 phút tuỳ size
+psql --version    # Đảm bảo Postgres ≥14
+psql -h localhost -U postgres -d postgres -c "SELECT version();"
 ```
 
-**Step C — Verify staging**:
-
-```sql
--- Connect staging DB qua Supabase SQL Editor
-SELECT
-  (SELECT COUNT(*) FROM profiles) AS profiles_count,
-  (SELECT COUNT(*) FROM destinations) AS destinations_count,
-  (SELECT COUNT(*) FROM tours) AS tours_count,
-  (SELECT COUNT(*) FROM bookings) AS bookings_count,
-  (SELECT COUNT(*) FROM hotels) AS hotels_count;
-```
-
-So sánh với prod (chạy cùng query) → row count phải khớp ±10 (tolerance cho data thay đổi giữa lúc dump).
-
-### 0.4 Run pre-flight audit script trên staging
-
-Mục đích: xác nhận data hiện tại không vi phạm constraint mới (UUID format, FK consistency).
-
-```sql
--- Audit 1: All TEXT id phải đúng format UUID
-SELECT 'profiles' AS table_name, id FROM profiles
-WHERE id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-UNION ALL
-SELECT 'destinations', id FROM destinations
-WHERE id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-UNION ALL
-SELECT 'tours', id FROM tours
-WHERE id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-UNION ALL
-SELECT 'bookings', id FROM bookings
-WHERE id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
--- Expected: 0 row. Nếu có row → ID không phải UUID → cần regen ID trước migration.
-
--- Audit 2: FK consistency — tất cả booking có user_id tồn tại trong profiles
-SELECT 'orphan booking' AS issue, b.id
-FROM bookings b
-LEFT JOIN profiles p ON p.id = b.user_id
-WHERE p.id IS NULL;
--- Expected: 0 row.
-
--- Audit 3: HotelBooking sẽ bị drop ở PART 8 — verify không có booking PENDING/PAID còn ref hotel
-SELECT b.id, b.status FROM bookings b
-INNER JOIN hotel_bookings hb ON hb.booking_id = b.id
-WHERE b.status IN ('PENDING', 'PAID', 'CONFIRMED');
--- Expected: 0 row HOẶC nếu có thì manual settle/cancel trước migration.
-
--- Audit 4: Booking type = 'TOUR' phải có tour_booking; type = 'HOTEL' phải có hotel_booking
-SELECT b.id, b.booking_type FROM bookings b
-LEFT JOIN tour_bookings tb ON tb.booking_id = b.id
-LEFT JOIN hotel_bookings hb ON hb.booking_id = b.id
-WHERE (b.booking_type = 'TOUR' AND tb.id IS NULL)
-   OR (b.booking_type = 'HOTEL' AND hb.id IS NULL);
--- Expected: 0 row.
-
--- Audit 5: Booking PENDING/PAID/CONFIRMED còn open — sẽ bị ảnh hưởng bởi schema change
--- (drop bookingType, drop checkIn/checkOut, rename TourBooking.unitPrice/participants → priceBreakdown)
-SELECT
-  b.id,
-  b.status,
-  b.booking_type,
-  b.created_at,
-  b.guest_name,
-  b.guest_email
-FROM bookings b
-WHERE b.status IN ('PENDING', 'PAID', 'CONFIRMED');
--- Expected: 0 row LÝ TƯỞNG.
--- Nếu có row > 0:
---   * PENDING quá 24h → admin manual cancel trên prod TRƯỚC migration
---   * PAID/CONFIRMED → KHÔNG được drop. Phải migrate priceBreakdown cho các row này
---     (xem Phase 1.X "Backfill data" bước 4)
---   * Nếu booking_type = 'HOTEL' và status PAID/CONFIRMED → STOP. Liên hệ
---     khách settle trước migration (refund hoặc convert sang tour booking).
-
--- Audit 6: Tour cũ có priceFrom NULL không?
-SELECT COUNT(*) FROM tours WHERE price_from IS NULL OR price_from = 0;
--- Expected: 0. Nếu > 0 → admin nhập lại priceFrom trước migration
--- (vì sẽ backfill priceAdult từ priceFrom).
-```
-
-**Quyết định:**
-- ✅ Tất cả audit pass → tiếp Phase 1
-- ❌ Có row vi phạm → fix trên prod TRƯỚC khi pivot (vd: regen ID, settle hotel booking pending), rồi re-dump vào staging
+Nếu psql kết nối được → OK.
 
 ---
 
-## Phase 0.5 — Data backfill plan (Day 0)
+## Giai đoạn 1 — Sửa schema + chạy migration local (~2 tiếng)
 
-> **Lý do**: Schema mới có field NOT NULL (`tours.price_adult`) hoặc thay đổi semantics (`TourBooking.unitPrice/participants` → `priceBreakdown`). Data cũ phải được backfill TRONG migration để không break booking flow ngay sau apply.
+### 1.1 Sửa `prisma/schema.prisma`
 
-### 0.5.1 Tour pricing backfill (sau PART 3, trước PART 8)
+Tham khảo tài liệu chính: `travel-doc/docs/03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md`
 
-Migration file `migration.sql` sẽ có thứ tự:
+Các thay đổi cần làm (sửa thẳng vào `prisma/schema.prisma`):
 
-```
-PART 0: TEXT → UUID
-PART 1: TourItinerary.hotelId
-PART 2: Cost tracking
-PART 3: Add pricing fields (priceAdult/Child/Infant/singleSupplement) — NULLABLE để backfill
-**PART 3.5: BACKFILL** ← thêm bước này
-PART 4: Risk management
-... (các PART khác)
-PART 8: Drop HotelBooking + bookingType
-... (các PART còn lại)
-PART 11: ALTER COLUMN priceAdult NOT NULL ← thêm sau PART 3.5
-```
+**Nhóm A — Đổi kiểu ID sang UUID native (PART 0):**
+- Tất cả `String @id @default(uuid())` → `String @id @default(uuid()) @db.Uuid`
+- Tất cả `String @id` (không có default) → `String @id @db.Uuid`
+- Tất cả khoá ngoại `String @map("..._id")` → `String @db.Uuid @map("..._id")`
 
-**SQL backfill (PART 3.5)**:
+**Nhóm B — Xoá Hotel Booking (PART 8):**
+- Xoá model `HotelBooking` toàn bộ
+- Xoá enum `BookingType`
+- Xoá field `Booking.bookingType`, `Booking.checkIn`, `Booking.checkOut`
+- Xoá relation `Booking.hotelBooking`
 
-```sql
--- Backfill priceAdult, priceChild, priceInfant, singleSupplementPrice từ priceFrom cũ
--- Default ratio: child = 70% adult, infant = 0, single supplement = 40% adult
-UPDATE tours
-SET
-  price_adult              = COALESCE(price_from, 0),
-  price_child              = ROUND(COALESCE(price_from, 0) * 0.7),
-  price_infant             = 0,
-  single_supplement_price  = ROUND(COALESCE(price_from, 0) * 0.4)
-WHERE price_adult IS NULL;
+**Nhóm C — Pricing Pattern C cho Tour (PART 3):**
+- Xoá field `Tour.priceFrom`, `Tour.durationText`
+- Đổi `Tour.tourType` từ String → enum `TourType { SERIES PRIVATE CORPORATE }`
+- Thêm field `Tour.priceAdult`, `priceChild`, `priceInfant`, `singleSupplementPrice` (đều `Decimal? @db.Decimal(14, 0)`)
+- Thêm field `Tour.estimatedCost` (cho admin reporting tương lai)
+- Thêm field `Tour.durationDays` (Int — thay `durationText`)
 
--- Verify
-SELECT COUNT(*) AS tours_with_null_price_adult
-FROM tours WHERE price_adult IS NULL;
--- Expected: 0
-```
+**Nhóm D — Tour Option (PART 3):**
+- Thêm model `TourOption` (id, tourId, nameVi, nameEn, surchargeAdult, surchargeChild, ...)
 
-**SQL constraint (PART 11)**:
+**Nhóm E — Tour Departure (PART 4):**
+- Thêm field `TourDeparture.minParticipants`, `cancellationDeadline`, `actualCostPerPax`
 
-```sql
-ALTER TABLE tours ALTER COLUMN price_adult SET NOT NULL;
-ALTER TABLE tours ALTER COLUMN price_child SET NOT NULL;
-ALTER TABLE tours ALTER COLUMN price_infant SET NOT NULL;
--- single_supplement_price giữ nullable (tour không bắt buộc có)
+**Nhóm F — Tour Booking Pattern C (PART 3):**
+- Xoá `TourBooking.unitPrice`, `TourBooking.participants` (vì chưa có khách, drop thẳng)
+- Thêm `TourBooking.adults`, `children`, `infants`
+- Thêm `TourBooking.optionId` (FK tới TourOption)
+- Thêm `TourBooking.priceBreakdown` (Json — chi tiết tính tiền)
+- Thêm `TourBooking.isSingleSupplement`
 
-ALTER TABLE tours
-ADD CONSTRAINT tours_pricing_positive_check
-CHECK (price_adult > 0 AND price_child >= 0 AND price_infant >= 0);
-```
+**Nhóm G — Booking lock (PART 4):**
+- Thêm `Booking.paymentDeadline` (DateTime)
 
-> **Lưu ý**: Sau khi đồng bộ dữ liệu cũ, admin nên rà soát các tour và chỉnh lại `priceChild` thực tế nếu khác mức 70% (ví dụ các tour đặc biệt). Đây là việc dọn dẹp sau khi đổi nền, không chặn migration.
+**Nhóm H — Hotel Allotment (PART 4):**
+- Thêm model `HotelAllotment` (id, hotelId, periodMonth Date, allotment, ...)
+- `CHECK (periodMonth = date_trunc('month', periodMonth))` — chỉ cho phép ngày đầu tháng
 
-### 0.5.2 TourBooking backfill (sau PART 3.5)
+**Nhóm I — Room enum (PART 5):**
+- Đổi `Room.roomType` từ String → enum `RoomType`
 
-`TourBooking.unitPrice × participants` → `priceBreakdown` JSON.
+**Nhóm J — Inquiry Request (PART 7):**
+- Thêm model `InquiryRequest` (id, fullName, email, phone, tourType InquiryTourType, ...)
+- Thêm enum `InquiryStatus`, `InquiryTourType`
 
-Strategy: **Giữ cột cũ, thêm cột mới, KHÔNG drop cột cũ trong sprint này** (đảm bảo backward compat trong giai đoạn rollout).
+**Nhóm K — Tour Itinerary (PART 1):**
+- Đổi `TourItinerary.hotelId` từ String → `String? @db.Uuid` (cho phép null + UUID)
 
-```sql
--- PART 3.6: Add priceBreakdown JSON column nullable
-ALTER TABLE tour_bookings ADD COLUMN price_breakdown JSONB;
-ALTER TABLE tour_bookings ADD COLUMN adults INT;
-ALTER TABLE tour_bookings ADD COLUMN children INT DEFAULT 0;
-ALTER TABLE tour_bookings ADD COLUMN infants INT DEFAULT 0;
-ALTER TABLE tour_bookings ADD COLUMN option_id UUID REFERENCES tour_options(id);
-ALTER TABLE tour_bookings ADD COLUMN is_single_supplement BOOLEAN DEFAULT FALSE;
+**Nhóm L — Đổi onDelete (PART 9):**
+- `Booking.userId` → `onDelete: Restrict` (không cho xoá Profile khi còn booking)
+- `Review.userId` → `onDelete: Restrict`
 
--- Backfill: assume tất cả participants cũ là adults
-UPDATE tour_bookings tb
-SET
-  adults = tb.participants,
-  children = 0,
-  infants = 0,
-  is_single_supplement = FALSE,
-  price_breakdown = jsonb_build_object(
-    'adults', jsonb_build_object(
-      'count', tb.participants,
-      'unitPrice', tb.unit_price,
-      'subtotal', tb.unit_price * tb.participants
-    ),
-    'children', jsonb_build_object('count', 0, 'unitPrice', 0, 'subtotal', 0),
-    'infants', jsonb_build_object('count', 0, 'unitPrice', 0, 'subtotal', 0),
-    'option', NULL,
-    'singleSupplement', NULL,
-    'total', tb.unit_price * tb.participants,
-    '_backfilled', true
-  )
-WHERE adults IS NULL;
+**Nhóm M — Partial index (PART 10):**
+- Prisma không support partial index trực tiếp → khai báo qua raw SQL trong migration file (xem bước 1.3)
 
-ALTER TABLE tour_bookings ALTER COLUMN adults SET NOT NULL;
-ALTER TABLE tour_bookings ALTER COLUMN price_breakdown SET NOT NULL;
-
--- KHÔNG xoá unit_price + participants ở sprint này (để cuối Sprint 6 mới xoá khi đã chắc chắn ổn)
-```
-
-> **Quyết định**: Cột `unit_price` + `participants` được giữ lại làm "cột song song" trong Sprint 4. Sau khi Sprint 6 chạy ổn định ≥2 tuần thì mới xoá. Đây là cách giảm rủi ro: thêm cột mới chạy song song một thời gian, mới xoá cột cũ.
-
-### 0.5.3 Booking PENDING active
-
-Nếu Audit 5 phát hiện booking PENDING active:
-
-| Status | Hành động trước migration |
-| --- | --- |
-| PENDING > 24h | Auto-cancel trên prod (`UPDATE bookings SET status = 'CANCELLED' WHERE status = 'PENDING' AND created_at < NOW() - INTERVAL '24 hours'`) |
-| PENDING < 24h | Đợi user complete hoặc manual contact |
-| PAID/CONFIRMED | Backfill priceBreakdown bình thường (nội dung schema cũ vẫn map được) |
-
----
-
-## Phase 1 — Apply migration trên staging (Day 1)
-
-### 1.1 Update Prisma schema
+### 1.2 Reset DB local + tạo migration mới
 
 ```bash
-cd travel-web
-git checkout -b sprint-4/migration-pivot
+# Reset DB local — XOÁ HẾT DỮ LIỆU local
+pnpm prisma migrate reset --force
+
+# Tạo migration mới — Prisma tự sinh SQL từ schema vừa sửa
+pnpm prisma migrate dev --name add_pricing_options_and_allotment
 ```
 
-Update `prisma/schema.prisma` theo Prisma delta trong file:
-`travel-doc/docs/03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md` mục "Prisma schema delta".
+Lệnh trên sẽ:
+- So sánh schema mới với DB local
+- Tạo file `prisma/migrations/20260601_add_pricing_options_and_allotment/migration.sql`
+- Chạy migration trên DB local
+- Sinh lại Prisma Client
 
-Highlight:
-- Mọi `String @id` → `String @id @db.Uuid @default(...)`
-- Mọi FK `String @map("..._id")` → `String @db.Uuid @map("..._id")`
-- Drop `HotelBooking` model + relation Booking.hotelBooking
-- Drop `BookingType` enum
-- Drop fields `Booking.bookingType`, `Booking.checkIn`, `Booking.checkOut`
-- Add Tour fields `priceAdult/priceChild/priceInfant/singleSupplementPrice/estimatedCost`
-- Add `TourOption` model
-- Add `TourDeparture.minParticipants/cancellationDeadline/actualCostPerPax`
-- Drop `Tour.priceFrom/durationText/tourType` (string)
-- Add `Tour.tourType` (enum TourType: SERIES/PRIVATE/CORPORATE)
-- Add `InquiryRequest` model + enums InquiryStatus, InquiryTourType
-- Add `HotelAllotment` model
-- Add `Room.roomType` enum
-- Add `TourBooking` fields `adults/children/infants/optionId/priceBreakdown/isSingleSupplement`
-- Add `Booking.paymentDeadline`
-- Drop `TourBooking.unitPrice/participants` (replace bằng adults/children/infants + breakdown)
-- Convert `Profile→Booking/Review` từ Cascade → Restrict
+### 1.3 Thêm partial index thủ công (Prisma không hỗ trợ)
 
-### 1.2 Generate migration SQL
-
-```bash
-# KHÔNG dùng prisma migrate dev (sẽ lose data)
-# Tạo migration manual với SQL từ migration spec
-mkdir -p prisma/migrations/20260601000000_add_pricing_options_and_allotment
-cp ../travel-doc/docs/03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md /tmp/migration-spec.md
-# Copy phần SQL từ PART 0..10 vào file:
-nano prisma/migrations/20260601000000_add_pricing_options_and_allotment/migration.sql
-```
-
-**Quan trọng**: SQL phải theo thứ tự **PART 0 → 1 → 2 → ... → 10**. PART 0 là TYPE conversion, các PART khác phụ thuộc vào nó.
-
-### 1.3 Apply trên staging
-
-```bash
-# Set env
-export DATABASE_URL="$STAGING_DATABASE_URL"
-export DIRECT_URL="$STAGING_DIRECT_URL"
-
-# Dry run xem SQL nào sẽ chạy (không thực sự apply)
-pnpm prisma migrate diff \
-  --from-migrations prisma/migrations \
-  --to-schema-datamodel prisma/schema.prisma \
-  --script
-
-# Apply
-pnpm prisma migrate deploy
-
-# Generate Prisma Client mới
-pnpm prisma generate
-```
-
-**Dự kiến time**: 2-10 phút tuỳ data size (PART 0 ALTER COLUMN TYPE UUID là chậm nhất).
-
-### 1.4 Smoke test trên staging
-
-→ Xem `03-test-plan.md` mục "Migration smoke test" (10 case).
-
-### 1.5 Soak test 48h
-
-- Deploy `travel-web` lên Vercel preview với env staging
-- Chạy thật trong 48h: admin login, browse, tạo 1 inquiry, tạo 1 tour mới
-- Monitor Supabase logs: nếu có error 500 hoặc constraint violation → debug, fix migration
-- Monitor Vercel logs: same
-
-**Pass condition**: 48h không có error blocking + tất cả smoke test re-run vẫn pass.
-
----
-
-## Phase 2 — Apply migration trên production (Day 2)
-
-### 2.1 Schedule maintenance window
-
-- Chọn thời điểm low traffic (vd: 2-3 giờ sáng VN)
-- Estimate downtime: ~30-60 phút (production có ít data, sẽ nhanh hơn staging vì data thật còn nhỏ)
-- Announce trên fanpage Vivu Travel + email subscriber: "Bảo trì hệ thống từ 2h-3h sáng [ngày]"
-- Update status page (nếu có) hoặc landing page banner: "Đang bảo trì"
-
-### 2.2 Pre-deploy checklist
-
-- [ ] PITR snapshot taken (verify trên Supabase dashboard, ngay trước khi apply)
-- [ ] Vercel: ENABLE maintenance mode (env `MAINTENANCE_MODE=true`) → middleware redirect tới `/bao-tri`
-- [ ] Notify team Slack/Telegram: "Migration starting"
-- [ ] Backup `prod_dump_pre_migration_<date>.dump` lưu offline (S3 hoặc local)
-- [ ] DNS không thay đổi
-- [ ] Vercel deployment đã build xong với code branch `sprint-4/migration-pivot` ở preview
-
-### 2.3 Apply
-
-```bash
-export DATABASE_URL="$PROD_DATABASE_URL"
-export DIRECT_URL="$PROD_DIRECT_URL"
-
-# Re-run pre-flight audit lần cuối trên prod
-psql "$PROD_DATABASE_URL" -f /path/to/preflight-audit.sql
-# Verify all 4 audits return 0 row
-
-# Apply migration
-pnpm prisma migrate deploy
-
-# Wait until exit 0 — DO NOT INTERRUPT
-```
-
-### 2.4 Post-deploy verification (≤15 phút)
+Mở file migration vừa sinh ở `prisma/migrations/[timestamp]_add_pricing_options_and_allotment/migration.sql`, thêm vào cuối file:
 
 ```sql
--- Verify 1: tất cả ID column type = uuid
+-- Partial index cho các bảng có is_active
+CREATE INDEX IF NOT EXISTS idx_destinations_active ON destinations(slug) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_tours_active        ON tours(slug)        WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_hotels_active       ON hotels(slug)       WHERE is_active = true;
+
+-- CHECK constraint cho HotelAllotment.periodMonth
+ALTER TABLE hotel_allotments
+  ADD CONSTRAINT hotel_allotments_period_month_first_day
+  CHECK (period_month = DATE_TRUNC('month', period_month));
+
+-- CHECK constraint cho TourDeparture.bookedCount ≤ capacity
+ALTER TABLE tour_departures
+  ADD CONSTRAINT tour_departures_no_overbooking
+  CHECK (booked_count <= capacity);
+
+-- CHECK constraint cho Review polymorphism (chỉ 1 trong hotel/tour)
+ALTER TABLE reviews
+  ADD CONSTRAINT review_target_exclusive
+  CHECK ((hotel_id IS NOT NULL)::int + (tour_id IS NOT NULL)::int = 1);
+
+-- CHECK constraint cho SeoPage polymorphism
+ALTER TABLE seo_pages
+  ADD CONSTRAINT seo_pages_exclusive_target
+  CHECK (
+    (tour_id IS NOT NULL)::int +
+    (destination_id IS NOT NULL)::int +
+    (hotel_id IS NOT NULL)::int +
+    (static_key IS NOT NULL)::int = 1
+  );
+```
+
+Sau khi sửa file, chạy lại migration để áp dụng phần SQL bổ sung:
+
+```bash
+pnpm prisma migrate reset --force
+pnpm prisma migrate dev    # apply lại với raw SQL bổ sung
+```
+
+### 1.4 Verify schema local
+
+```bash
+# Mở Prisma Studio để xem schema mới
+pnpm prisma studio
+```
+
+Hoặc qua SQL:
+
+```sql
+-- Verify 1: ID columns là UUID
 SELECT table_name, column_name, data_type
 FROM information_schema.columns
-WHERE column_name LIKE '%id%'
-  AND table_schema = 'public'
-  AND data_type = 'text';
--- Expected: 0 row (tất cả phải là 'uuid')
+WHERE column_name = 'id' AND table_schema = 'public';
+-- Tất cả phải có data_type = 'uuid'
 
--- Verify 2: HotelBooking table dropped
+-- Verify 2: HotelBooking đã bị xoá
 SELECT EXISTS (
-  SELECT FROM information_schema.tables
+  SELECT 1 FROM information_schema.tables
   WHERE table_schema = 'public' AND table_name = 'hotel_bookings'
 );
--- Expected: false
+-- Kết quả: false
 
--- Verify 3: New tables created
+-- Verify 3: Bảng mới đã có
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
   AND table_name IN ('tour_options', 'inquiry_requests', 'hotel_allotments');
--- Expected: 3 row
+-- Kết quả: 3 dòng
 
--- Verify 4: New columns trên Tour
+-- Verify 4: Field mới trên Tour
 SELECT column_name FROM information_schema.columns
 WHERE table_schema = 'public' AND table_name = 'tours'
-  AND column_name IN ('price_adult', 'price_child', 'price_infant', 'single_supplement_price', 'estimated_cost');
--- Expected: 5 row
+  AND column_name IN ('price_adult', 'price_child', 'price_infant', 'duration_days');
+-- Kết quả: 4 dòng
 
--- Verify 5: Partial indexes created
+-- Verify 5: Partial index đã tạo
 SELECT indexname FROM pg_indexes
-WHERE schemaname = 'public'
-  AND indexname LIKE 'idx_%_active';
--- Expected: ≥3 row (destinations, tours, hotels)
-
--- Verify 6: CHECK constraints created
-SELECT conname FROM pg_constraint
-WHERE contype = 'c' AND conname LIKE '%_check';
--- Expected: ≥6 row (review_target_exclusive, seo_pages_exclusive_target, departure_no_overbooking, etc.)
+WHERE schemaname = 'public' AND indexname LIKE 'idx_%_active';
+-- Kết quả: ≥3 dòng
 ```
 
-### 2.5 Smoke test prod (≤15 phút)
+---
 
-- Đăng nhập admin → list tours → load OK
-- Tạo 1 destination test → save → verify DB
-- Public page `/diem-den` load OK
-- Public page `/tours` load OK
-- Logout → đăng ký user mới → login OK
+## Giai đoạn 2 — Sửa lại file seed (~1 tiếng)
 
-**Pass condition**: 5/5 smoke pass + Verify 1-6 đều OK.
+File `prisma/seed.ts` hiện đang seed theo schema cũ (priceFrom, durationText, ...). Cần sửa để khớp schema mới.
 
-### 2.6 Disable maintenance mode
+### 2.1 Các thay đổi chính trong `seed.ts`
+
+```typescript
+// CŨ
+await prisma.tour.create({
+  data: {
+    nameVi: 'Tour Đà Lạt 3N2Đ',
+    priceFrom: 5_000_000,
+    durationText: '3 ngày 2 đêm',
+    tourType: 'SERIES',  // string
+    // ...
+  }
+})
+
+// MỚI
+await prisma.tour.create({
+  data: {
+    nameVi: 'Tour Đà Lạt 3N2Đ',
+    priceAdult: 5_000_000,
+    priceChild: 3_500_000,
+    priceInfant: 0,
+    singleSupplementPrice: 2_000_000,
+    durationDays: 3,
+    tourType: TourType.SERIES,  // enum
+    estimatedCost: 3_000_000,
+    // ...
+    tourOptions: {
+      create: [
+        { nameVi: 'Tiêu chuẩn', surchargeAdult: 0, surchargeChild: 0 },
+        { nameVi: 'Cao cấp', surchargeAdult: 1_000_000, surchargeChild: 500_000 },
+      ],
+    },
+  }
+})
+```
+
+### 2.2 Thêm sample InquiryRequest
+
+```typescript
+await prisma.inquiryRequest.create({
+  data: {
+    fullName: 'Nguyễn Văn A',
+    email: 'demo@example.com',
+    phone: '0901234567',
+    tourType: InquiryTourType.PRIVATE,
+    groupSize: 8,
+    preferredDate: new Date('2026-07-15'),
+    message: 'Đoàn gia đình 8 người đi Đà Lạt 3 ngày',
+    status: InquiryStatus.NEW,
+  }
+})
+```
+
+### 2.3 Chạy seed
 
 ```bash
-# Vercel
-vercel env rm MAINTENANCE_MODE production
-# Hoặc set MAINTENANCE_MODE=false
-vercel deploy --prod
+pnpm prisma db seed
 ```
 
-### 2.7 Post-deploy monitoring (24h)
+### 2.4 Kiểm tra dữ liệu
 
-- Slack alert error rate > 1% → page Tech Lead
-- Sentry watchlist: any new error type
-- Supabase dashboard: query slow > 500ms
+```bash
+pnpm prisma studio
+# Mở browser → click vào Tour → verify priceAdult, priceChild, durationDays đã có
+# Click InquiryRequest → verify có row sample
+```
 
 ---
 
-## Rollback (CHỈ dùng khi migration fail)
+## Giai đoạn 3 — Chạy migration trên Supabase production (~15 phút)
 
-### Quy tắc:
-- KHÔNG rollback nếu migration đã chạy 100% và chỉ smoke test fail. Fix forward.
-- CHỈ rollback nếu migration fail giữa chừng (PART X SQL error) → DB nửa nạc nửa mỡ.
+> Vì chưa có khách thật → không cần maintenance window phức tạp, không cần thông báo fanpage. Vẫn nên báo nhóm nội bộ (nếu có).
 
-### Trigger rollback:
-- 🔴 Migration báo error giữa chừng + DB không nhất quán
-- 🔴 Smoke test fail >50% case
-- 🔴 Application crash 5xx > 30% trong 10 phút sau deploy
+### 3.1 Chuẩn bị
 
-### Steps:
+```bash
+# Set DATABASE_URL trỏ tới Supabase production
+# Lấy từ Supabase dashboard → Settings → Database
+export DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:6543/postgres?pgbouncer=true"
+export DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres"
+```
 
-#### Phương án A: PITR (recommended cho prod)
+### 3.2 Backup snapshot Supabase (đề phòng)
 
-1. Tech Lead announce Slack: "Rollback initiating"
-2. Vercel: ENABLE maintenance mode lại
-3. Supabase dashboard → Database → Backups → Point-in-time recovery
-4. Chọn timestamp **ngay TRƯỚC khi apply migration** (vd: 2h30 nếu apply lúc 2h35)
-5. Click Restore → confirm
-6. Wait ~5-10 phút Supabase restore
-7. Update Vercel env DATABASE_URL nếu Supabase đổi (thường không)
-8. Verify post-restore: row count = trước migration, hotel_bookings table tồn tại lại
-9. Revert code Vercel: `vercel rollback` về commit trước branch pivot
-10. Disable maintenance mode
-11. Slack post-mortem: nguyên nhân, fix migration, plan retry
+Supabase Free plan có daily backup tự động. Trước khi apply, vào dashboard → Database → Backups → confirm có backup mới nhất ≤24h.
 
-**Time**: 15-30 phút.
+Nếu muốn chắc chắn, dump 1 bản tay (giống bước 0.2 nhưng dùng connection production).
 
-#### Phương án B: pg_restore (nếu PITR không work)
+### 3.3 Apply migration
 
-1. `psql "$PROD_DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`
-2. `pg_restore` từ `prod_dump_pre_migration_<date>.dump`
-3. Steps 8-11 như A
+```bash
+# Xem trước SQL nào sẽ chạy
+pnpm prisma migrate diff \
+  --from-empty \
+  --to-schema-datamodel prisma/schema.prisma \
+  --script
 
-**Time**: 30-60 phút (chậm hơn PITR).
+# Apply thật
+pnpm prisma migrate deploy
+
+# Sinh lại Prisma Client cho production build
+pnpm prisma generate
+```
+
+### 3.4 Verify production
+
+Chạy lại 5 query verify ở Giai đoạn 1.4, nhưng connect tới Supabase production.
+
+### 3.5 Smoke test web
+
+- Đăng nhập admin → list tours → load OK
+- Tạo 1 destination test → save → verify DB qua Prisma Studio
+- Public page `/diem-den` load OK
+- Public page `/tours` load OK
+- Đăng ký user mới → đăng nhập OK
+
+Nếu cả 5 đều OK → migration thành công.
 
 ---
 
-## Lessons learned template
+## Khôi phục (chỉ dùng khi migration hỏng giữa chừng)
 
-Sau khi sprint xong, fill phần này vào `04-retro.md`:
+### Trên local
 
-```markdown
-## What went well
-- ...
-
-## What didn't
-- ...
-
-## Action items cho lần sau
-- ...
-
-## Migration time actual
-- Staging apply: X phút
-- Prod apply: Y phút
-- Total downtime: Z phút
+```bash
+pnpm prisma migrate reset --force
+git checkout main -- prisma/schema.prisma
+pnpm prisma migrate deploy
+pnpm prisma db seed
 ```
+
+### Trên production Supabase
+
+1. Vào Supabase dashboard → Database → Backups → chọn backup ngay trước migration → Restore
+2. Đợi ~5-10 phút
+3. Revert code: `git revert HEAD` rồi `vercel deploy --prod`
+
+Vì chưa có khách thật → tệ nhất là mất dữ liệu seed nội bộ, làm lại bằng `pnpm prisma db seed`.
+
+---
+
+## Sau khi xong
+
+- [ ] Commit `prisma/schema.prisma` + `prisma/migrations/[timestamp]_add_pricing_options_and_allotment/`
+- [ ] Commit `prisma/seed.ts` đã refactor
+- [ ] Push branch `sprint-4/schema-pivot`
+- [ ] Cập nhật `trang-thai-web.md` đánh dấu S4-01 = Done
+- [ ] Thêm entry vào `99-tham-khao/changelog.md`
+- [ ] Bắt đầu task S4-02 (dọn code ref `HotelBooking` + `bookingType`)
 
 ---
 
 ## Liên kết
 
-- Migration spec đầy đủ SQL: `../../03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md`
-- Quy trình migration tổng thể: `../../03-co-so-du-lieu/04-quy-trinh-migration.md`
+- Spec migration chi tiết SQL: `../../03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md`
+- Quy trình migration tổng quát: `../../03-co-so-du-lieu/04-quy-trinh-migration.md`
 - Test plan: `03-test-plan.md`
 - Stories: `01-stories.md`
+- Runbook đầy đủ (cho post-launch): `02-runbook-luc-da-co-khach.md`

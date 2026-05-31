@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-05-31 — Sprint 4 chọn Path A (chưa có khách thật)
+
+**Phạm vi**: `05-quan-ly-sprint/sprint-4-schema-pivot/` + `trang-thai-web.md`
+**Duyệt**: Founder
+
+Trước khi bắt tay code Sprint 4 Day 1, rà soát trạng thái thực tế:
+- Production Supabase chưa có booking thật của khách (chỉ data seed/test nội bộ)
+- Postgres local đã cài sẵn (không cần Docker)
+
+→ Quyết định đi **Path A — đơn giản**:
+- Reset DB + chạy migration mới + seed lại dữ liệu mẫu
+- Không cần Supabase Pro + PITR + staging riêng
+- Không cần script đồng bộ dữ liệu cũ (Phase 0.5 cũ)
+- Không cần expand-contract pattern cho TourBooking (drop thẳng `unitPrice/participants`)
+- Thời gian Day 1 từ ~2 ngày → còn ~3-4 tiếng
+
+Khi nào dùng phiên bản đầy đủ? → Sau khi Sprint 6 ra mắt nội bộ có khách thật, dùng `02-runbook-luc-da-co-khach.md` (rename từ runbook cũ).
+
+**File thay đổi**:
+- `02-runbook.md` viết lại hoàn toàn cho Path A (~290 dòng, gọn hơn nhiều so với 520 dòng cũ)
+- `02-runbook-luc-da-co-khach.md` (NEW — rename từ runbook cũ) — giữ làm tham khảo cho lần migration sau khi có khách thật
+- `00-tong-quan.md` cập nhật pre-req section + dependencies section
+- `01-stories.md` S4-01 viết lại — bỏ AC về staging/PITR, thêm AC về Path A
+- `03-test-plan.md` Section "Setup môi trường test" — đổi Docker thành Postgres local
+- `trang-thai-web.md` cập nhật checklist Day 1 cho Path A
+
+**Trace**: chat 2026-05-31 mục "chuẩn bị Day 1 Sprint 4".
+
+---
+
 ## 2026-05-30 — Renumber sprint + drop Loyalty khỏi MVP (v3.0)
 
 **Scope**: `05-quan-ly-sprint/` + meta files

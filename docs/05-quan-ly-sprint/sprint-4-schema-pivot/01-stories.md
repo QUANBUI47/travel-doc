@@ -4,62 +4,63 @@
 
 ---
 
-## S4-01 — Apply migration `add_pricing_options_and_allotment`
+## S4-01 — Áp dụng migration `add_pricing_options_and_allotment`
 
-**Effort**: 2 ngày | **Priority**: 🔴 P0 (blocker) | **Owner**: Tech Lead
+**Effort**: 3-4 tiếng (Path A) | **Priority**: 🔴 P0 (chặn các story sau) | **Owner**: Solo dev (Founder)
 
-### Context
+### Bối cảnh
 
-Migration spec đã hoàn chỉnh ở `03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md` với 10 PART. Đây là story khó nhất sprint vì:
-- Có data thật trên production (`real_data`)
-- PART 0 (TEXT → UUID) là **destructive cast** — không reversible without rollback từ backup
-- Phải chạy đúng thứ tự PART 0 → PART 10
+Spec migration đầy đủ 10 phần ở `03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md`. Đây là story chặn các story sau vì:
+- Tất cả code Sprint 4 còn lại (S4-02 đến S4-07) đều phụ thuộc cấu trúc dữ liệu mới
+- Phần PART 0 (TEXT → UUID) đụng tới mọi bảng
 
-### AC (Acceptance Criteria)
+**Path A — chọn vì chưa có khách thật**: reset DB + migration mới + seed lại. Không cần Supabase Pro + PITR + staging riêng + script đồng bộ dữ liệu cũ. Xem chi tiết: `02-runbook.md`.
 
-| AC | Mô tả | Verify |
+### Tiêu chí nghiệm thu (AC)
+
+| AC | Mô tả | Kiểm bằng |
 | --- | --- | --- |
-| AC-01 | Supabase staging clone từ prod dump (≤24h) | Compare row count `profiles`, `tours`, `bookings` giữa staging và prod |
-| AC-02 | Pre-flight audit pass trên staging | Run `prisma/audit-uuid-format.sql` → 0 row invalid |
-| AC-03 | All 10 PARTs apply trên staging không lỗi | `prisma migrate deploy` exit 0 |
-| AC-04 | Smoke test pass trên staging (10 case) | Xem `03-test-plan.md` mục "Smoke Test Migration" |
-| AC-05 | Tested ≥48h staging idle (không error) | Supabase logs check |
-| AC-06 | Production PITR backup verified | Restore test trên throwaway project |
-| AC-07 | Production migration apply trong maintenance window | Status page banner, timeline ≤30 phút |
-| AC-08 | Post-deploy verification trên prod | Audit script lại, 5 smoke test |
+| AC-01 | `prisma/schema.prisma` đã sửa theo 13 nhóm thay đổi (xem `02-runbook.md` mục 1.1) | `git diff prisma/schema.prisma` |
+| AC-02 | Migration tự sinh được + chạy thành công trên Postgres local | `pnpm prisma migrate dev --name add_pricing_options_and_allotment` exit 0 |
+| AC-03 | Partial index + CHECK constraint đã thêm thủ công vào file migration | 5 verify query SQL ở `02-runbook.md` mục 1.4 đều trả về đúng |
+| AC-04 | `prisma/seed.ts` đã refactor — chạy `pnpm prisma db seed` không lỗi | Prisma Studio thấy tour có `priceAdult`, có TourOption + InquiryRequest sample |
+| AC-05 | Migration apply thành công trên Supabase production | `pnpm prisma migrate deploy` exit 0, 5 verify query trên production đều OK |
+| AC-06 | Smoke test web sau migration | 5/5 case ở `02-runbook.md` mục 3.5 pass |
 
-### Files affected
+### File bị ảnh hưởng
 
 ```
-prisma/schema.prisma                                   ← update theo Prisma delta của migration
+prisma/schema.prisma                                   ← sửa theo 13 nhóm (UUID, drop HotelBooking, Pattern C, TourOption, ...)
 prisma/migrations/<timestamp>_add_pricing_options_and_allotment/migration.sql
-                                                       ← copy content từ migration spec
-prisma/seed.ts                                         ← verify còn chạy được sau migrate
-.env.staging                                           ← DATABASE_URL + DIRECT_URL staging mới
+                                                       ← Prisma tự sinh + thêm tay phần partial index + CHECK
+prisma/seed.ts                                         ← refactor cho schema mới (Pattern C, TourOption, InquiryRequest)
+backups/before_sprint4_<date>.dump                    ← backup an toàn trước migration (không commit)
 ```
 
-### DoD checklist
+### Danh sách hoàn thành (DoD)
 
-- [ ] Supabase Pro PITR enabled
-- [ ] Staging Supabase project created
-- [ ] Prod dump imported vào staging
-- [ ] Pre-flight audit pass
-- [ ] All 10 PARTs apply trên staging
-- [ ] Smoke test 10/10 pass trên staging
-- [ ] 48h soak test trên staging — 0 error
-- [ ] Production maintenance window scheduled + announce
-- [ ] PITR snapshot taken ngay trước apply
-- [ ] Production migration apply
-- [ ] Post-deploy audit pass
-- [ ] Doc `02-runbook.md` final updated với learnings
+- [ ] Tạo branch `sprint-4/schema-pivot`
+- [ ] Dump backup Supabase production về `backups/` (đề phòng)
+- [ ] `prisma/schema.prisma` sửa xong cả 13 nhóm thay đổi
+- [ ] `pnpm prisma migrate dev` chạy thành công trên local
+- [ ] File migration được bổ sung phần raw SQL (partial index + CHECK constraint)
+- [ ] 5 verify query SQL trên local đều OK (xem `02-runbook.md` mục 1.4)
+- [ ] `prisma/seed.ts` refactor xong, `pnpm prisma db seed` chạy OK
+- [ ] Prisma Studio mở thấy dữ liệu mẫu đúng (tour có priceAdult, có InquiryRequest)
+- [ ] `pnpm prisma migrate deploy` chạy OK trên Supabase production
+- [ ] 5 verify query trên production đều OK
+- [ ] Smoke test web 5/5 pass (admin login, public page, đăng ký user)
+- [ ] Commit + push branch `sprint-4/schema-pivot`
+- [ ] Cập nhật `trang-thai-web.md` đánh dấu S4-01 = Done
+- [ ] Thêm entry vào `99-tham-khao/changelog.md`
 
 ### Test plan
 
-→ Xem `03-test-plan.md` mục "Migration smoke test"
+→ Xem `03-test-plan.md` mục "Smoke test migration"
 
-### Rollback plan
+### Khôi phục khi hỏng
 
-→ Xem `02-runbook.md` mục "Rollback"
+→ Xem `02-runbook.md` mục "Khôi phục"
 
 ---
 

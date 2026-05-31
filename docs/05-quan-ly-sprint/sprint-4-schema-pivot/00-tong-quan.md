@@ -8,15 +8,20 @@
 **Loại sprint**: Pivot / Refactor (không add feature mới ngoài `InquiryRequest`)
 **Thời gian dự kiến**: 2 tuần (10 ngày làm việc)
 **Effort dev ước tính**: 9-13 ngày dev
-**Owner**: Solo dev (Founder kiêm Tech Lead + PM + Dev). Code review = tự review theo `04-phat-trien/01-quy-chuan-lap-trinh.md` + DoD checklist từng story.
-**Pre-req hoàn thành trước khi start**:
+**Owner**: Solo dev (Founder kiêm Tech Lead + PM + Dev). Code review = tự review theo `04-phat-trien/01-quy-chuan-lap-trinh.md` + danh sách hoàn thành (DoD) từng story.
+
+**Hướng đi đã chọn**: **Path A — Đơn giản** (vì production chưa có booking thật).
+- Reset DB + chạy migration mới + seed lại dữ liệu mẫu
+- Không cần Supabase Pro + PITR + staging riêng
+- Khi nào ra mắt nội bộ có khách thật → quay lại đọc runbook đầy đủ ở `02-runbook-luc-da-co-khach.md`
+
+**Điều kiện cần trước khi bắt đầu**:
 - ✅ Doc v2.0 (D1-D5) đã chốt
-- ✅ Migration `add_pricing_options_and_allotment` đã spec đầy đủ 10 PART (`03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md`)
-- ✅ Sprint 4 spec 4 file (`00-tong-quan / 01-stories / 02-runbook / 03-test-plan`) đã chốt 2026-05-30
-- ✅ Wireframe Booking widget multi-pax (S4-05) — xem `04-wireframes.md`
-- ⏳ Backup production DB qua Supabase PITR — verify đã enable trước Day 1
-- ⏳ Tạo Supabase staging project mới + import dump từ prod — Day 1
-- ⏳ Performance baseline đo trước migration — xem `03-test-plan.md` Section 8
+- ✅ Migration `add_pricing_options_and_allotment` đã có spec đầy đủ 10 phần (`03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md`)
+- ✅ Sprint 4 spec 5 file (`00-tong-quan / 01-stories / 02-runbook / 03-test-plan / 04-wireframes`) đã chốt
+- ✅ Wireframe Booking widget nhiều khách (S4-05) — xem `04-wireframes.md`
+- ⏳ Postgres local đã chạy (psql kết nối được tới localhost)
+- ⏳ Dump backup Supabase production một bản về máy (đề phòng) — xem `02-runbook.md` Giai đoạn 0.2
 
 ---
 
@@ -113,14 +118,14 @@ Mục đích Sprint 4 là chỉnh nền cấu trúc dữ liệu, KHÔNG nên là
 
 ---
 
-## Dependencies
+## Phụ thuộc
 
-### External
-- Supabase PITR enabled trên production (verify settings → Database → Backups)
-- Supabase Pro plan để có PITR (nếu chưa có thì cần upgrade)
-- DB_URL + DIRECT_URL cho staging mới
+### Bên ngoài
+- Postgres local (≥14) đã cài đặt — để test migration trước khi đẩy lên Supabase
+- Quyền truy cập Supabase production (DATABASE_URL + DIRECT_URL trong dashboard)
+- ~~Supabase Pro + PITR~~ — bỏ trong Path A (sẽ cần khi ra mắt nội bộ)
 
-### Internal (doc / code)
+### Bên trong (doc / code)
 - ADR-001..007 chốt ở `02-kien-truc/decisions/` ✅
 - Migration spec ở `03-co-so-du-lieu/migrations/2026-05-27_add_pricing_options_and_allotment.md` ✅
 - Quy chuẩn code ở `04-phat-trien/01-quy-chuan-lap-trinh.md` ✅

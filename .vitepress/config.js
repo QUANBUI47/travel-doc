@@ -129,7 +129,8 @@ export default {
             items: [
               { text: 'Tổng quan', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/00-tong-quan' },
               { text: 'Stories', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/01-stories' },
-              { text: 'Runbook', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/02-runbook' },
+              { text: 'Runbook (Path A — hiện tại)', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/02-runbook' },
+              { text: 'Runbook đầy đủ (lúc đã có khách)', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/02-runbook-luc-da-co-khach' },
               { text: 'Test plan', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/03-test-plan' },
               { text: 'Wireframes', link: '/05-quan-ly-sprint/sprint-4-schema-pivot/04-wireframes' }
             ]
